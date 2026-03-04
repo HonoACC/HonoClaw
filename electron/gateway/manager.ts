@@ -1172,7 +1172,13 @@ export class GatewayManager extends EventEmitter {
         logger.info(`Gateway process started (pid=${child.pid})`);
         this.setStatus({ pid: child.pid });
       } else {
-        logger.warn('Gateway process spawned but PID is undefined');
+        logger.debug('Gateway process spawned with undefined PID; waiting for spawn/exit signal');
+        setTimeout(() => {
+          if (this.process !== child) return;
+          if (this.status.pid) return;
+          if (child.exitCode !== null || child.signalCode !== null) return;
+          logger.warn('Gateway process still has undefined PID after startup grace period');
+        }, 1000);
       }
 
       resolve();
