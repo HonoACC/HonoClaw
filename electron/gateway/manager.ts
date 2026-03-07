@@ -224,6 +224,7 @@ export class GatewayManager extends EventEmitter {
   private lifecycleEpoch = 0;
   private deferredRestartPending = false;
   private restartInFlight: Promise<void> | null = null;
+  private externalShutdownSupported: boolean | null = null;
 
   constructor(config?: Partial<ReconnectConfig>) {
     super();
@@ -252,6 +253,11 @@ export class GatewayManager extends EventEmitter {
     return sanitized;
   }
 
+  private isUnsupportedShutdownError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error);
+    return /unknown method:\s*shutdown/i.test(message);
+  }
+
   private formatExit(code: number | null, signal: NodeJS.Signals | null): string {
     if (code !== null) return `code=${code}`;
     if (signal) return `signal=${signal}`;
@@ -265,6 +271,14 @@ export class GatewayManager extends EventEmitter {
     // Known noisy lines that are not actionable for Gateway lifecycle debugging.
     if (msg.includes('openclaw-control-ui') && msg.includes('token_mismatch')) return { level: 'drop', normalized: msg };
     if (msg.includes('closed before connect') && msg.includes('token mismatch')) return { level: 'drop', normalized: msg };
+    // During renderer refresh / transport switching, loopback websocket probes can time out
+    // while the gateway is reloading. This is expected and not actionable.
+    if (msg.includes('[ws] handshake timeout') && msg.includes('remote=127.0.0.1')) {
+      return { level: 'debug', normalized: msg };
+    }
+    if (msg.includes('[ws] closed before connect') && msg.includes('remote=127.0.0.1')) {
+      return { level: 'debug', normalized: msg };
+    }
 
     // Downgrade frequent non-fatal noise.
     if (msg.includes('ExperimentalWarning')) return { level: 'debug', normalized: msg };
@@ -529,11 +543,17 @@ export class GatewayManager extends EventEmitter {
 
     // If this manager is attached to an external gateway process, ask it to shut down
     // over protocol before closing the socket.
-    if (!this.ownsProcess && this.ws?.readyState === WebSocket.OPEN) {
+    if (!this.ownsProcess && this.ws?.readyState === WebSocket.OPEN && this.externalShutdownSupported !== false) {
       try {
         await this.rpc('shutdown', undefined, 5000);
+        this.externalShutdownSupported = true;
       } catch (error) {
-        logger.warn('Failed to request shutdown for externally managed Gateway:', error);
+        if (this.isUnsupportedShutdownError(error)) {
+          this.externalShutdownSupported = false;
+          logger.info('External Gateway does not support "shutdown"; skipping shutdown RPC for future stops');
+        } else {
+          logger.warn('Failed to request shutdown for externally managed Gateway:', error);
+        }
       }
     }
 
