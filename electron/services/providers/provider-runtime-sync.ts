@@ -1,5 +1,5 @@
 import type { GatewayManager } from '../../gateway/manager';
-import { getProviderAccount } from './provider-store';
+import { getProviderAccount, listProviderAccounts } from './provider-store';
 import { getProviderSecret } from '../secrets/secret-store';
 import type { ProviderConfig } from '../../utils/secure-storage';
 import { getAllProviders, getApiKey, getDefaultProvider, getProvider } from '../../utils/secure-storage';
@@ -121,18 +121,75 @@ export async function syncProviderApiKeyToRuntime(
   await saveProviderKeyToOpenClaw(ock, apiKey);
 }
 
+export async function syncAllProviderAuthToRuntime(): Promise<void> {
+  const accounts = await listProviderAccounts();
+
+  for (const account of accounts) {
+    const runtimeProviderKey = await resolveRuntimeProviderKey({
+      id: account.id,
+      name: account.label,
+      type: account.vendorId,
+      baseUrl: account.baseUrl,
+      model: account.model,
+      fallbackModels: account.fallbackModels,
+      fallbackProviderIds: account.fallbackAccountIds,
+      enabled: account.enabled,
+      createdAt: account.createdAt,
+      updatedAt: account.updatedAt,
+    });
+
+    const secret = await getProviderSecret(account.id);
+    if (!secret) {
+      continue;
+    }
+
+    if (secret.type === 'api_key') {
+      await saveProviderKeyToOpenClaw(runtimeProviderKey, secret.apiKey);
+      continue;
+    }
+
+    if (secret.type === 'local' && secret.apiKey) {
+      await saveProviderKeyToOpenClaw(runtimeProviderKey, secret.apiKey);
+      continue;
+    }
+
+    if (secret.type === 'oauth') {
+      await saveOAuthTokenToOpenClaw(runtimeProviderKey, {
+        access: secret.accessToken,
+        refresh: secret.refreshToken,
+        expires: secret.expiresAt,
+        email: secret.email,
+        projectId: secret.subject,
+      });
+    }
+  }
+}
+
 export async function syncSavedProviderToRuntime(
   config: ProviderConfig,
   apiKey: string | undefined,
   gatewayManager?: GatewayManager,
 ): Promise<void> {
-  const ock = getOpenClawProviderKey(config.type, config.id);
+  const ock = await resolveRuntimeProviderKey(config);
+  const secret = await getProviderSecret(config.id);
 
   if (apiKey !== undefined) {
     const trimmedKey = apiKey.trim();
     if (trimmedKey) {
       await saveProviderKeyToOpenClaw(ock, trimmedKey);
     }
+  } else if (secret?.type === 'api_key') {
+    await saveProviderKeyToOpenClaw(ock, secret.apiKey);
+  } else if (secret?.type === 'oauth') {
+    await saveOAuthTokenToOpenClaw(ock, {
+      access: secret.accessToken,
+      refresh: secret.refreshToken,
+      expires: secret.expiresAt,
+      email: secret.email,
+      projectId: secret.subject,
+    });
+  } else if (secret?.type === 'local' && secret.apiKey) {
+    await saveProviderKeyToOpenClaw(ock, secret.apiKey);
   }
 
   const meta = getProviderConfig(config.type);
@@ -173,13 +230,33 @@ export async function syncUpdatedProviderToRuntime(
   apiKey: string | undefined,
   gatewayManager?: GatewayManager,
 ): Promise<void> {
-  const ock = getOpenClawProviderKey(config.type, config.id);
+  const ock = await resolveRuntimeProviderKey(config);
   const fallbackModels = await getProviderFallbackModelRefs(config);
   const meta = getProviderConfig(config.type);
   const api = config.type === 'custom' || config.type === 'ollama' ? 'openai-completions' : meta?.api;
+  const secret = await getProviderSecret(config.id);
 
   if (!api) {
     return;
+  }
+
+  if (apiKey !== undefined) {
+    const trimmedKey = apiKey.trim();
+    if (trimmedKey) {
+      await saveProviderKeyToOpenClaw(ock, trimmedKey);
+    }
+  } else if (secret?.type === 'api_key') {
+    await saveProviderKeyToOpenClaw(ock, secret.apiKey);
+  } else if (secret?.type === 'oauth') {
+    await saveOAuthTokenToOpenClaw(ock, {
+      access: secret.accessToken,
+      refresh: secret.refreshToken,
+      expires: secret.expiresAt,
+      email: secret.email,
+      projectId: secret.subject,
+    });
+  } else if (secret?.type === 'local' && secret.apiKey) {
+    await saveProviderKeyToOpenClaw(ock, secret.apiKey);
   }
 
   await syncProviderConfigToOpenClaw(ock, config.model, {

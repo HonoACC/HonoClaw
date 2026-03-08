@@ -26,6 +26,7 @@ import { HostEventBus } from '../api/event-bus';
 import { deviceOAuthManager } from '../utils/device-oauth';
 import { browserOAuthManager } from '../utils/browser-oauth';
 import { whatsAppLoginManager } from '../utils/whatsapp-login';
+import { syncAllProviderAuthToRuntime } from '../services/providers/provider-runtime-sync';
 
 // Disable GPU hardware acceleration globally for maximum stability across
 // all GPU configurations (no GPU, integrated, discrete).
@@ -306,6 +307,7 @@ async function initialize(): Promise<void> {
   const gatewayAutoStart = await getSetting('gatewayAutoStart');
   if (gatewayAutoStart) {
     try {
+      await syncAllProviderAuthToRuntime();
       logger.debug('Auto-starting Gateway...');
       await gatewayManager.start();
       logger.info('Gateway auto-start succeeded');
