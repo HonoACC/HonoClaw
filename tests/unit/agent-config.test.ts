@@ -175,7 +175,9 @@ describe('agent config lifecycle', () => {
     ]);
     expect(config.bindings).toEqual([]);
     await expect(access(test2RuntimeDir)).rejects.toThrow();
-    await expect(access(test2WorkspaceDir)).rejects.toThrow();
+    // Workspace deletion is intentionally deferred by `deleteAgentConfig` to avoid
+    // ENOENT errors during Gateway restart, so it should still exist here.
+    await expect(access(test2WorkspaceDir)).resolves.toBeUndefined();
 
     infoSpy.mockRestore();
   });
