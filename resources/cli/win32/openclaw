@@ -14,4 +14,7 @@ case "$1" in
 esac
 
 export OPENCLAW_EMBEDDED_IN="ClawX"
+if [ "$#" -eq 0 ]; then
+  set -- tui
+fi
 ELECTRON_RUN_AS_NODE=1 exec "$INSTALL_DIR/ClawX.exe" "$INSTALL_DIR/resources/openclaw/openclaw.mjs" "$@"
