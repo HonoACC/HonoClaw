@@ -687,8 +687,114 @@ function patchBundledRuntime(outputDir) {
   }
 }
 
+function patchBundledPiTui(nodeModulesDir) {
+  const target = path.join(nodeModulesDir, '@mariozechner', 'pi-tui', 'dist', 'tui.js');
+  if (!fs.existsSync(target)) {
+    echo`   ⚠️  Skipped patch for bundled pi-tui alternate screen: target file not found`;
+    return;
+  }
+
+  let current = fs.readFileSync(target, 'utf8');
+  let patched = 0;
+  const replacements = [
+    {
+      label: 'alternate screen state field',
+      search: `    fullRedrawCount = 0;
+    stopped = false;
+    // Overlay stack for modal components rendered on top of base content
+    overlayStack = [];`,
+      replace: `    fullRedrawCount = 0;
+    stopped = false;
+    alternateScreenActive = false;
+    // Overlay stack for modal components rendered on top of base content
+    overlayStack = [];`,
+    },
+    {
+      label: 'alternate screen start',
+      search: `    start() {
+        this.stopped = false;
+        this.terminal.start((data) => this.handleInput(data), () => this.requestRender());
+        this.terminal.hideCursor();
+        this.queryCellSize();
+        this.requestRender();
+    }`,
+      replace: `    start() {
+        this.stopped = false;
+        this.alternateScreenActive = process.env.OPENCLAW_TUI_ALT_SCREEN === "1";
+        this.terminal.start((data) => this.handleInput(data), () => this.requestRender());
+        if (this.alternateScreenActive) {
+            this.terminal.write("\\x1b[?1049h");
+        }
+        this.terminal.hideCursor();
+        this.queryCellSize();
+        this.requestRender();
+    }`,
+    },
+    {
+      label: 'alternate screen stop',
+      search: `    stop() {
+        this.stopped = true;
+        // Move cursor to the end of the content to prevent overwriting/artifacts on exit
+        if (this.previousLines.length > 0) {
+            const targetRow = this.previousLines.length; // Line after the last content
+            const lineDiff = targetRow - this.hardwareCursorRow;
+            if (lineDiff > 0) {
+                this.terminal.write(\`\\x1b[\${lineDiff}B\`);
+            }
+            else if (lineDiff < 0) {
+                this.terminal.write(\`\\x1b[\${-lineDiff}A\`);
+            }
+            this.terminal.write("\\r\\n");
+        }
+        this.terminal.showCursor();
+        this.terminal.stop();
+    }`,
+      replace: `    stop() {
+        this.stopped = true;
+        // Move cursor to the end of the content to prevent overwriting/artifacts on exit
+        if (this.previousLines.length > 0) {
+            const targetRow = this.previousLines.length; // Line after the last content
+            const lineDiff = targetRow - this.hardwareCursorRow;
+            if (lineDiff > 0) {
+                this.terminal.write(\`\\x1b[\${lineDiff}B\`);
+            }
+            else if (lineDiff < 0) {
+                this.terminal.write(\`\\x1b[\${-lineDiff}A\`);
+            }
+            this.terminal.write("\\r\\n");
+        }
+        this.terminal.showCursor();
+        this.terminal.stop();
+        if (this.alternateScreenActive) {
+            this.terminal.write("\\x1b[?1049l\\x1b[?25h");
+            this.alternateScreenActive = false;
+        }
+    }`,
+    },
+  ];
+
+  for (const patch of replacements) {
+    if (!current.includes(patch.search)) {
+      echo`   ⚠️  Skipped patch for bundled pi-tui ${patch.label}: expected source snippet not found`;
+      continue;
+    }
+
+    const next = current.replace(patch.search, patch.replace);
+    if (next !== current) {
+      current = next;
+      patched++;
+    }
+  }
+
+  if (patched > 0) {
+    fs.writeFileSync(target, current, 'utf8');
+    echo`   🩹 Patched bundled pi-tui alternate screen support (${patched} site(s))`;
+  }
+}
+
 patchBrokenModules(outputNodeModules);
 patchBundledRuntime(OUTPUT);
+patchBundledPiTui(outputNodeModules);
 
 // 8. Verify the bundle
 const entryExists = fs.existsSync(path.join(OUTPUT, 'openclaw.mjs'));
