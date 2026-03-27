@@ -54,6 +54,20 @@ export async function runGatewayStartupSequence(hooks: StartupHooks): Promise<vo
       if (hooks.shouldWaitForPortFree) {
         await hooks.waitForPortFree(hooks.port);
         hooks.assertLifecycle('start/wait-port');
+
+        // Windows service restarts can temporarily drop the WebSocket while the
+        // same gateway process continues owning the port. Re-probe here before
+        // spawning a new process so we reconnect to the recovered gateway
+        // instead of launching a duplicate that will fail on the port lock.
+        const existingAfterWait = await hooks.findExistingGateway(hooks.port, hooks.ownedPid);
+        hooks.assertLifecycle('start/find-existing-after-wait');
+        if (existingAfterWait) {
+          logger.debug(`Found existing Gateway on port ${existingAfterWait.port} after waiting for port availability`);
+          await hooks.connect(existingAfterWait.port, existingAfterWait.externalToken);
+          hooks.assertLifecycle('start/connect-existing-after-wait');
+          hooks.onConnectedToExistingGateway();
+          return;
+        }
       }
 
       await hooks.startProcess();
