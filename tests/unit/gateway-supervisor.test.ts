@@ -77,6 +77,7 @@ describe('gateway supervisor process cleanup', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     Object.defineProperty(process, 'platform', { value: originalPlatform, writable: true });
   });
 
@@ -133,5 +134,45 @@ describe('gateway supervisor process cleanup', () => {
       expect.any(Function),
     );
     expect(mockCreateServer).toHaveBeenCalled();
+  });
+
+  it('fails when orphan cleanup leaves the Windows port occupied', async () => {
+    setPlatform('win32');
+    vi.useFakeTimers();
+    const { findExistingGatewayProcess } = await import('@electron/gateway/supervisor');
+
+    mockExec.mockImplementation((cmd: string, _opts: object, cb: (err: Error | null, stdout: string) => void) => {
+      if (cmd.includes('netstat -ano')) {
+        cb(null, '  TCP    127.0.0.1:18789    0.0.0.0:0    LISTENING    4321\n');
+        return {} as never;
+      }
+      cb(null, '');
+      return {} as never;
+    });
+
+    mockCreateServer.mockImplementation(() => {
+      const handlers = new Map<string, (...args: unknown[]) => void>();
+      return {
+        once(event: string, callback: (...args: unknown[]) => void) {
+          handlers.set(event, callback);
+          return this;
+        },
+        listen() {
+          queueMicrotask(() => handlers.get('error')?.(new Error('in use')));
+          return this;
+        },
+        close(callback?: () => void) {
+          callback?.();
+        },
+      };
+    });
+
+    const resultPromise = findExistingGatewayProcess({ port: 18789 });
+    const expectation = expect(resultPromise).rejects.toThrow(
+      'Gateway port 18789 is still occupied after orphan cleanup',
+    );
+    await vi.advanceTimersByTimeAsync(13_000);
+
+    await expectation;
   });
 });

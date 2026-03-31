@@ -9,16 +9,15 @@ export interface ExistingGatewayInfo {
 
 type StartupHooks = {
   port: number;
-  ownedPid?: number;
   shouldWaitForPortFree: boolean;
   maxStartAttempts?: number;
   resetStartupStderrLines: () => void;
   getStartupStderrLines: () => string[];
   assertLifecycle: (phase: string) => void;
-  findExistingGateway: (port: number, ownedPid?: number) => Promise<ExistingGatewayInfo | null>;
+  findExistingGateway: (port: number) => Promise<ExistingGatewayInfo | null>;
   connect: (port: number, externalToken?: string) => Promise<void>;
   onConnectedToExistingGateway: () => void;
-  waitForPortFree: (port: number) => Promise<void>;
+  waitForPortFree: (port: number) => Promise<boolean>;
   startProcess: () => Promise<void>;
   waitForReady: (port: number) => Promise<void>;
   onConnectedToManagedGateway: () => void;
@@ -39,7 +38,7 @@ export async function runGatewayStartupSequence(hooks: StartupHooks): Promise<vo
 
     try {
       logger.debug('Checking for existing Gateway...');
-      const existing = await hooks.findExistingGateway(hooks.port, hooks.ownedPid);
+      const existing = await hooks.findExistingGateway(hooks.port);
       hooks.assertLifecycle('start/find-existing');
       if (existing) {
         logger.debug(`Found existing Gateway on port ${existing.port}`);
@@ -52,8 +51,11 @@ export async function runGatewayStartupSequence(hooks: StartupHooks): Promise<vo
       logger.debug('No existing Gateway found, starting new process...');
 
       if (hooks.shouldWaitForPortFree) {
-        await hooks.waitForPortFree(hooks.port);
+        const portFreed = await hooks.waitForPortFree(hooks.port);
         hooks.assertLifecycle('start/wait-port');
+        if (!portFreed) {
+          throw new Error(`Gateway port ${hooks.port} is still occupied`);
+        }
       }
 
       await hooks.startProcess();

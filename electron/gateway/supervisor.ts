@@ -125,7 +125,7 @@ export async function unloadLaunchctlGatewayService(): Promise<void> {
   }
 }
 
-export async function waitForPortFree(port: number, timeoutMs = 30000): Promise<void> {
+export async function waitForPortFree(port: number, timeoutMs = 30000): Promise<boolean> {
   const net = await import('net');
   const start = Date.now();
   const pollInterval = 500;
@@ -146,17 +146,18 @@ export async function waitForPortFree(port: number, timeoutMs = 30000): Promise<
       if (elapsed > pollInterval) {
         logger.info(`Port ${port} became available after ${elapsed}ms`);
       }
-      return;
+      return true;
     }
 
     if (!logged) {
-      logger.info(`Waiting for port ${port} to become available (Windows TCP TIME_WAIT)...`);
+      logger.info(`Waiting for port ${port} to become available...`);
       logged = true;
     }
     await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
-  logger.warn(`Port ${port} still occupied after ${timeoutMs}ms, proceeding anyway`);
+  logger.warn(`Port ${port} still occupied after ${timeoutMs}ms`);
+  return false;
 }
 
 async function getListeningProcessIds(port: number): Promise<string[]> {
@@ -246,11 +247,20 @@ export async function findExistingGatewayProcess(options: {
       if (pids.length > 0 && (!ownedPid || !pids.includes(String(ownedPid)))) {
         await terminateOrphanedProcessIds(port, pids);
         if (process.platform === 'win32') {
-          await waitForPortFree(port, 10000);
+          const portFreed = await waitForPortFree(port, 10000);
+          if (!portFreed) {
+            throw new Error(`Gateway port ${port} is still occupied after orphan cleanup`);
+          }
         }
         return null;
       }
     } catch (err) {
+      if (
+        err instanceof Error &&
+        /still occupied after orphan cleanup/i.test(err.message)
+      ) {
+        throw err;
+      }
       logger.warn('Error checking for existing process on port:', err);
     }
 
@@ -272,7 +282,13 @@ export async function findExistingGatewayProcess(options: {
         resolve(null);
       });
     });
-  } catch {
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      /still occupied after orphan cleanup/i.test(err.message)
+    ) {
+      throw err;
+    }
     return null;
   }
 }

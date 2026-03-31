@@ -226,7 +226,6 @@ export class GatewayManager extends EventEmitter {
     try {
       await runGatewayStartupSequence({
         port: this.status.port,
-        ownedPid: this.process?.pid,
         shouldWaitForPortFree: process.platform === 'win32',
         resetStartupStderrLines: () => {
           this.recentStartupStderrLines = [];
@@ -235,8 +234,8 @@ export class GatewayManager extends EventEmitter {
         assertLifecycle: (phase) => {
           this.lifecycleController.assert(startEpoch, phase);
         },
-        findExistingGateway: async (port, ownedPid) => {
-          return await findExistingGatewayProcess({ port, ownedPid });
+        findExistingGateway: async (port) => {
+          return await findExistingGatewayProcess({ port, ownedPid: this.process?.pid });
         },
         connect: async (port, externalToken) => {
           await this.connect(port, externalToken);
@@ -255,7 +254,7 @@ export class GatewayManager extends EventEmitter {
           this.startHealthCheck();
         },
         waitForPortFree: async (port) => {
-          await waitForPortFree(port);
+          return await waitForPortFree(port);
         },
         startProcess: async () => {
           await this.startProcess();
