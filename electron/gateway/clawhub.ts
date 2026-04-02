@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { app, shell } from 'electron';
 import { getOpenClawConfigDir, ensureDir, getClawHubCliBinPath, getClawHubCliEntryPath, quoteForCmd } from '../utils/paths';
-import { getSetting } from '../utils/store';
+
 
 export interface ClawHubSearchParams {
     query: string;
@@ -128,7 +128,6 @@ export class ClawHubService {
      * Run a ClawHub CLI command
      */
     private async runCommand(args: string[]): Promise<string> {
-        const language = await getSetting('language');
 
         return new Promise((resolve, reject) => {
             if (this.useNodeRunner && !fs.existsSync(this.cliEntryPath)) {
@@ -155,9 +154,6 @@ export class ClawHubService {
             };
             if (this.useNodeRunner) {
                 env.ELECTRON_RUN_AS_NODE = '1';
-            }
-            if (language?.startsWith('zh')) {
-                env.CLAWHUB_REGISTRY = 'https://mirror-cn.clawhub.com';
             }
             const spawnCmd = useShell ? quoteForCmd(this.cliPath) : this.cliPath;
             const spawnArgs = useShell ? commandArgs.map(a => quoteForCmd(a)) : commandArgs;
