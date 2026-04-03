@@ -1,5 +1,5 @@
 {
-    "name": "clawx",
+    "name": "honoclaw",
     "version": "0.3.5",
     "pnpm": {
         "onlyBuiltDependencies": [
@@ -26,9 +26,9 @@
             ]
         }
     },
-    "description": "ClawX - Graphical AI Assistant based on OpenClaw",
+    "description": "HonoClaw - Graphical AI Assistant based on OpenClaw",
     "main": "dist-electron/main/index.js",
-    "author": "ClawX Team",
+    "author": "HonoACC Team",
     "license": "MIT",
     "private": true,
     "scripts": {
