@@ -1,0 +1,202 @@
+name: Upload Existing Release Artifacts to R2
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'GitHub Actions run id containing release-* artifacts (e.g. 23946461751)'
+        required: true
+      version:
+        description: 'Release version (e.g. 0.3.5)'
+        required: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  upload-r2-manual:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release artifacts from an existing run
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.run_id }}
+          path: release-artifacts
+          pattern: release-*
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List downloaded artifacts
+        run: |
+          echo "=== Downloaded artifacts ==="
+          find release-artifacts/ -type f -exec ls -lh {} \;
+          echo ""
+          echo "=== File tree ==="
+          tree release-artifacts/ || find release-artifacts/ -print
+
+      - name: Prepare upload directories
+        run: |
+          VERSION="${{ inputs.version }}"
+          TAG="v${VERSION}"
+
+          if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then
+            CHANNEL="${BASH_REMATCH[1]}"
+          else
+            CHANNEL="latest"
+          fi
+
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "CHANNEL=$CHANNEL" >> $GITHUB_ENV
+
+          mkdir -p staging/${CHANNEL}
+          mkdir -p staging/releases/${TAG}
+
+          find release-artifacts/ -type f | while read file; do
+            filename=$(basename "$file")
+            cp "$file" "staging/${CHANNEL}/${filename}"
+            cp "$file" "staging/releases/${TAG}/${filename}"
+          done
+
+          echo "=== staging/${CHANNEL}/ ==="
+          ls -lh staging/${CHANNEL}/
+          echo ""
+          echo "=== staging/releases/${TAG}/ ==="
+          ls -lh staging/releases/${TAG}/
+
+      - name: Verify yml files present
+        run: |
+          echo "=== staging/${CHANNEL}/ (update metadata) ==="
+          ls -la staging/${CHANNEL}/*.yml 2>/dev/null || echo "No yml files found"
+
+      - name: Generate release-info.json
+        run: |
+          BASE_URL="https://clawdownload.honoacc.com/${CHANNEL}"
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg channel "$CHANNEL" \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg base "$BASE_URL" \
+            --arg changelog "https://github.com/${{ github.repository }}/releases/tag/${TAG}" \
+            '{
+              version: $version,
+              channel: $channel,
+              releaseDate: $date,
+              downloads: {
+                mac: {
+                  x64: ($base + "/HonoClaw-" + $version + "-mac-x64.dmg"),
+                  arm64: ($base + "/HonoClaw-" + $version + "-mac-arm64.dmg")
+                },
+                win: {
+                  x64: ($base + "/HonoClaw-" + $version + "-win-x64.exe"),
+                  arm64: ($base + "/HonoClaw-" + $version + "-win-arm64.exe")
+                },
+                linux: {
+                  deb_amd64: ($base + "/HonoClaw-" + $version + "-linux-amd64.deb"),
+                  deb_arm64: ($base + "/HonoClaw-" + $version + "-linux-arm64.deb"),
+                  appimage_x64: ($base + "/HonoClaw-" + $version + "-linux-x86_64.AppImage"),
+                  appimage_arm64: ($base + "/HonoClaw-" + $version + "-linux-arm64.AppImage"),
+                  rpm_x64: ($base + "/HonoClaw-" + $version + "-linux-x86_64.rpm")
+                }
+              },
+              changelog: $changelog
+            }' > staging/${CHANNEL}/release-info.json
+
+          echo "=== release-info.json ==="
+          cat staging/${CHANNEL}/release-info.json
+
+      - name: Configure AWS CLI for Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+        run: |
+          aws --version
+          test -n "$AWS_ACCESS_KEY_ID"
+          test -n "$AWS_SECRET_ACCESS_KEY"
+          test -n "$R2_ACCOUNT_ID"
+          echo "R2 endpoint: https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+      - name: Upload archive assets to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          find "staging/releases/${TAG}" -maxdepth 1 -type f ! -name "*.yml" ! -name "release-info.json" | while read file; do
+            key="releases/${TAG}/$(basename "$file")"
+            echo "Uploading asset: $key"
+            aws s3 cp "$file" "s3://${R2_BUCKET}/${key}" \
+              --endpoint-url "$ENDPOINT" \
+              --cache-control "public,max-age=31536000,immutable"
+          done
+
+      - name: Upload channel files to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          aws s3 rm "s3://${R2_BUCKET}/${CHANNEL}/" \
+            --recursive \
+            --endpoint-url "$ENDPOINT" || true
+
+          find "staging/${CHANNEL}" -maxdepth 1 -type f ! -name "*.yml" ! -name "release-info.json" | while read file; do
+            key="${CHANNEL}/$(basename "$file")"
+            echo "Uploading cached asset: $key"
+            aws s3 cp "$file" "s3://${R2_BUCKET}/${key}" \
+              --endpoint-url "$ENDPOINT" \
+              --cache-control "public,max-age=31536000,immutable"
+          done
+
+          aws s3 cp "staging/${CHANNEL}/release-info.json" "s3://${R2_BUCKET}/${CHANNEL}/release-info.json" \
+            --endpoint-url "$ENDPOINT" \
+            --cache-control "no-cache,no-store,must-revalidate"
+
+          find "staging/${CHANNEL}" -maxdepth 1 -type f -name "*.yml" | while read file; do
+            key="${CHANNEL}/$(basename "$file")"
+            echo "Uploading update metadata: $key"
+            aws s3 cp "$file" "s3://${R2_BUCKET}/${key}" \
+              --endpoint-url "$ENDPOINT" \
+              --cache-control "no-cache,no-store,must-revalidate"
+          done
+
+      - name: Verify R2 upload
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          echo "=== ${CHANNEL}/ ==="
+          aws s3 ls "s3://${R2_BUCKET}/${CHANNEL}/" --recursive --endpoint-url "$ENDPOINT"
+
+          echo ""
+          echo "=== releases/${TAG}/ ==="
+          aws s3 ls "s3://${R2_BUCKET}/releases/${TAG}/" --recursive --endpoint-url "$ENDPOINT"
+
+          echo ""
+          echo "=== Verify release-info.json ==="
+          aws s3 cp "s3://${R2_BUCKET}/${CHANNEL}/release-info.json" /tmp/release-info.json --endpoint-url "$ENDPOINT"
+          jq . /tmp/release-info.json
+
+          echo ""
+          echo "=== Verify update yml ==="
+          aws s3 ls "s3://${R2_BUCKET}/${CHANNEL}/" --recursive --endpoint-url "$ENDPOINT" | grep "\.yml$" || echo "(none found)"
+
+          echo ""
+          echo "Manual R2 upload completed successfully!"
