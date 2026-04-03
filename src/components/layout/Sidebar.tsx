@@ -29,7 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { hostApiFetch } from '@/lib/host-api';
 import { useTranslation } from 'react-i18next';
-import logoSvg from '@/assets/logo.svg';
+import logoSvg from '@/assets/honoclaw-logo.png';
 
 type SessionBucketKey =
   | 'today'

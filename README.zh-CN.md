@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="src/assets/logo.svg" width="128" height="128" alt="HonoClaw Logo" />
+  <img src="src/assets/honoclaw-logo.png" width="128" height="128" alt="HonoClaw Logo" />
 </p>
 
 <h1 align="center">HonoClaw</h1>
