@@ -25,7 +25,7 @@
   <a href="https://discord.com/invite/84Kex3GGAh" target="_blank">
   <img src="https://img.shields.io/discord/1399603591471435907?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb" alt="chat on Discord" />
   </a>
-  <img src="https://img.shields.io/github/downloads/ValueCell-ai/HonoClaw/total?color=%23027DEB" alt="Downloads" />
+  <img src="https://img.shields.io/github/downloads/HonoACC/HonoClaw/total?color=%23027DEB" alt="Downloads" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
 </p>
 
@@ -146,13 +146,13 @@ Skills 页面可展示来自多个 OpenClaw 来源的技能（托管目录、wor
 
 #### 预构建版本（推荐）
 
-从 [Releases](https://github.com/ValueCell-ai/HonoClaw/releases) 页面下载适用于你平台的最新版本。
+从 [Releases](https://github.com/HonoACC/HonoClaw/releases) 页面下载适用于你平台的最新版本。
 
 #### 从源码构建
 
 ```bash
 # 克隆仓库
-git clone https://github.com/ValueCell-ai/HonoClaw.git
+git clone https://github.com/HonoACC/HonoClaw.git
 cd HonoClaw
 
 # 初始化项目
@@ -431,14 +431,14 @@ HonoClaw 构建于以下优秀的开源项目之上：
 
 如果你服务的客户对 AI 工具或自动化方案感兴趣，欢迎与我们合作。
 
-欢迎私信我们，或发送邮件至 [public@valuecell.ai](mailto:public@valuecell.ai) 了解更多。
+欢迎私信我们，或发送邮件至 [support@honoacc.com](mailto:support@honoacc.com) 了解更多。
 
 ---
 
 ## Stars 历史
 
 <p align="center">
-  <img src="https://api.star-history.com/svg?repos=ValueCell-ai/HonoClaw&type=Date" alt="Stars 历史图表" />
+  <img src="https://api.star-history.com/svg?repos=HonoACC/HonoClaw&type=Date" alt="Stars 历史图表" />
 </p>
 
 ---
