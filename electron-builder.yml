@@ -51,11 +51,11 @@ asarUnpack:
 npmRebuild: false
 
 # Auto-update configuration
-# Primary: Alibaba Cloud OSS (fast for Chinese users, used for auto-update)
-# Fallback: GitHub Releases (backup, used when OSS is unavailable)
+# Primary: Cloudflare R2 + custom domain
+# Fallback: GitHub Releases (backup, used when R2 is unavailable)
 publish:
   - provider: generic
-    url: https://claw.honoacc.com/latest
+    url: https://clawdownload.honoacc.com/latest
     useMultipleRangeRequest: false
   - provider: github
     owner: HonoACC
