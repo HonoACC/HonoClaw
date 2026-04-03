@@ -429,6 +429,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Download release artifacts only
         uses: actions/download-artifact@v4
         with:
