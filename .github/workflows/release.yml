@@ -184,10 +184,10 @@ jobs:
       #
       # Actual latest.yml structure (from electron-builder NSIS):
       #   files:
-      #     - url: ClawX-0.2.4-win-x64.exe    ← files[] entries have url/sha512/size
+      #     - url: HonoClaw-0.2.4-win-x64.exe    ← files[] entries have url/sha512/size
       #       sha512: <base64>
       #       size: 430775882
-      #   path: ClawX-0.2.4-win-arm64.exe      ← top-level has path/sha512 (no size!)
+      #   path: HonoClaw-0.2.4-win-arm64.exe      ← top-level has path/sha512 (no size!)
       #   sha512: <base64>
       #   releaseDate: '...'
       - name: Update latest.yml sha512 after code signing
@@ -329,7 +329,7 @@ jobs:
             - **AppImage (ARM64)**: `HonoClaw-*-linux-arm64.AppImage`
             - **Debian/Ubuntu (x64)**: `HonoClaw-*-linux-amd64.deb`
             - **Debian/Ubuntu (ARM64)**: `HonoClaw-*-linux-arm64.deb`
-            - **RPM (x64)**: `ClawX-*-linux-x86_64.rpm`
+            - **RPM (x64)**: `HonoClaw-*-linux-x86_64.rpm`
             
             ### 📝 Release Notes
             
