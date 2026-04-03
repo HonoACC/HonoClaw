@@ -489,62 +489,10 @@ jobs:
           ls -la staging/${CHANNEL}/*.yml 2>/dev/null || echo "No yml files found (check electron-builder outputs)"
 
       - name: Normalize mac update metadata
+        env:
+          CHANNEL: ${{ steps.version.outputs.channel }}
         run: |
-          python3 - <<'PY'
-from pathlib import Path
-
-channel = "${{ steps.version.outputs.channel }}"
-file = Path(f"staging/{channel}/latest-mac.yml")
-if not file.exists():
-    print(f"No latest-mac.yml found in staging/{channel}, skipping normalization")
-    raise SystemExit(0)
-
-lines = file.read_text().splitlines()
-start = next((i for i, line in enumerate(lines) if line.strip() == 'files:'), None)
-if start is None:
-    print('latest-mac.yml has no files section, skipping normalization')
-    raise SystemExit(0)
-
-end = len(lines)
-for i in range(start + 1, len(lines)):
-    if lines[i] and not lines[i].startswith(' '):
-        end = i
-        break
-
-blocks = []
-i = start + 1
-while i < end:
-    line = lines[i]
-    if line.startswith('  - url: '):
-        block = [line]
-        i += 1
-        while i < end and (lines[i].startswith('    ') or lines[i].strip() == ''):
-            block.append(lines[i])
-            i += 1
-        blocks.append(block)
-    else:
-        i += 1
-
-seen = set()
-deduped = []
-removed = []
-for block in blocks:
-    url = block[0].split(': ', 1)[1].strip()
-    if url in seen:
-        removed.append(url)
-        continue
-    seen.add(url)
-    deduped.append(block)
-
-new_lines = lines[: start + 1]
-for block in deduped:
-    new_lines.extend(block)
-new_lines.extend(lines[end:])
-file.write_text('\n'.join(new_lines) + '\n')
-print(f"Normalized {file}: kept {len(deduped)} file entries, removed {len(removed)} duplicates")
-if removed:
-    print('Removed duplicates: ' + ', '.join(removed))
-PY
+          python3 scripts/normalize-latest-mac-yml.py "staging/${CHANNEL}/latest-mac.yml"
 
       - name: Generate release-info.json
         run: |
