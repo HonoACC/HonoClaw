@@ -12,8 +12,8 @@ import { logger } from '../utils/logger';
 import { EventEmitter } from 'events';
 import { setQuitting } from './app-state';
 
-/** Base CDN URL (without trailing channel path) */
-const OSS_BASE_URL = 'https://claw.honoacc.com';
+/** Base update CDN URL (without trailing channel path) */
+const OSS_BASE_URL = 'https://clawdownload.honoacc.com';
 
 export interface UpdateStatus {
   status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';

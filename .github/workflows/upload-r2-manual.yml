@@ -75,7 +75,8 @@ jobs:
           python3 - <<'PY'
 from pathlib import Path
 
-channel = "${CHANNEL}"
+import os
+channel = os.environ.get("CHANNEL", "latest")
 file = Path(f"staging/{channel}/latest-mac.yml")
 if not file.exists():
     print(f"No latest-mac.yml found in staging/{channel}, skipping normalization")
