@@ -52,15 +52,52 @@ jobs:
 
       - name: Download uv binaries for macOS
         if: matrix.platform == 'mac'
-        run: pnpm run uv:download:mac
+        run: |
+          for attempt in 1 2 3; do
+            echo "uv mac download attempt $attempt/3"
+            if pnpm run uv:download:mac; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "uv mac download failed, retrying in 10s..."
+              sleep 10
+            fi
+          done
+          echo "uv mac download failed after 3 attempts"
+          exit 1
 
       - name: Download uv binaries for Windows
         if: matrix.platform == 'win'
-        run: pnpm run uv:download:win
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            echo "uv win download attempt $attempt/3"
+            if pnpm run uv:download:win; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "uv win download failed, retrying in 10s..."
+              sleep 10
+            fi
+          done
+          echo "uv win download failed after 3 attempts"
+          exit 1
 
       - name: Download uv binaries for Linux
         if: matrix.platform == 'linux'
-        run: pnpm run uv:download:linux
+        run: |
+          for attempt in 1 2 3; do
+            echo "uv linux download attempt $attempt/3"
+            if pnpm run uv:download:linux; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "uv linux download failed, retrying in 10s..."
+              sleep 10
+            fi
+          done
+          echo "uv linux download failed after 3 attempts"
+          exit 1
 
 
       # macOS specific steps
@@ -125,6 +162,8 @@ jobs:
         if: matrix.platform == 'win'
         id: win-channel
         shell: bash
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
         run: |
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             TAG="${GITHUB_REF#refs/tags/v}"
@@ -133,14 +172,20 @@ jobs:
           fi
           if [[ "$TAG" =~ (alpha|beta) ]]; then
             echo "is_stable=false" >> $GITHUB_OUTPUT
+            echo "should_sign=false" >> $GITHUB_OUTPUT
             echo "Channel: prerelease ($TAG) — skipping code signing"
+          elif [[ -n "$SIGNPATH_API_TOKEN" ]]; then
+            echo "is_stable=true" >> $GITHUB_OUTPUT
+            echo "should_sign=true" >> $GITHUB_OUTPUT
+            echo "Channel: stable ($TAG) — SignPath token present, will sign"
           else
             echo "is_stable=true" >> $GITHUB_OUTPUT
-            echo "Channel: stable ($TAG) — will sign"
+            echo "should_sign=false" >> $GITHUB_OUTPUT
+            echo "Channel: stable ($TAG) — SIGNPATH_API_TOKEN missing, building unsigned Windows package"
           fi
 
       - name: Validate unsigned Windows artifacts before SignPath
-        if: matrix.platform == 'win' && steps.win-channel.outputs.is_stable == 'true'
+        if: matrix.platform == 'win' && steps.win-channel.outputs.should_sign == 'true'
         shell: pwsh
         run: |
           $unsignedExeFiles = Get-ChildItem -Path "release" -Filter *.exe -File
@@ -153,7 +198,7 @@ jobs:
           $unsignedExeFiles | ForEach-Object { Write-Host " - $($_.Name)" }
 
       - name: Upload unsigned Windows artifacts for SignPath
-        if: matrix.platform == 'win' && steps.win-channel.outputs.is_stable == 'true'
+        if: matrix.platform == 'win' && steps.win-channel.outputs.should_sign == 'true'
         id: upload-unsigned-windows-artifact
         uses: actions/upload-artifact@v4
         with:
@@ -162,7 +207,7 @@ jobs:
           retention-days: 1
 
       - name: Sign Windows artifacts via SignPath
-        if: matrix.platform == 'win' && steps.win-channel.outputs.is_stable == 'true'
+        if: matrix.platform == 'win' && steps.win-channel.outputs.should_sign == 'true'
         id: signpath-sign-windows
         uses: signpath/github-action-submit-signing-request@v2
         with:
@@ -175,7 +220,7 @@ jobs:
           output-artifact-directory: release/signed
 
       - name: Replace unsigned executables with signed ones
-        if: matrix.platform == 'win' && steps.win-channel.outputs.is_stable == 'true'
+        if: matrix.platform == 'win' && steps.win-channel.outputs.should_sign == 'true'
         shell: pwsh
         run: |
           Write-Host "SignPath GitHub artifact ID: ${{ steps.upload-unsigned-windows-artifact.outputs.artifact-id }}"
@@ -210,7 +255,7 @@ jobs:
       #   sha512: <base64>
       #   releaseDate: '...'
       - name: Update latest.yml sha512 after code signing
-        if: matrix.platform == 'win' && steps.win-channel.outputs.is_stable == 'true'
+        if: matrix.platform == 'win' && steps.win-channel.outputs.should_sign == 'true'
         shell: pwsh
         run: |
           $ymlFiles = Get-ChildItem -Path "release" -Filter "*.yml" -File | Where-Object { $_.Name -ne "builder-debug.yml" }
