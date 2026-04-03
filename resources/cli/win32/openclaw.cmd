@@ -5,7 +5,7 @@ if /i "%1"=="update" (
     echo openclaw is managed by HonoClaw ^(bundled version^).
     echo.
     echo To update openclaw, update HonoClaw:
-    echo   Open ClawX ^> Settings ^> Check for Updates
+    echo   Open HonoClaw ^> Settings ^> Check for Updates
     echo   Or download the latest version from https://claw.honoacc.com
     exit /b 0
 )
