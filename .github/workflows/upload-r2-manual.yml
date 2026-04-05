@@ -1,4 +1,4 @@
-name: Upload Existing Release Artifacts to R2
+name: Upload Existing Release Artifacts to R2 (Latest Only)
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
         description: 'GitHub Actions run id containing release-* artifacts (e.g. 23946461751)'
         required: true
       version:
-        description: 'Release version (e.g. 0.3.5)'
+        description: 'Release version (e.g. 0.3.6)'
         required: true
 
 permissions:
@@ -38,35 +38,23 @@ jobs:
           echo "=== File tree ==="
           tree release-artifacts/ || find release-artifacts/ -print
 
-      - name: Prepare upload directories
+      - name: Prepare latest directory
         run: |
           VERSION="${{ inputs.version }}"
-          TAG="v${VERSION}"
-
-          if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then
-            CHANNEL="${BASH_REMATCH[1]}"
-          else
-            CHANNEL="latest"
-          fi
+          CHANNEL="latest"
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "TAG=$TAG" >> $GITHUB_ENV
           echo "CHANNEL=$CHANNEL" >> $GITHUB_ENV
 
           mkdir -p staging/${CHANNEL}
-          mkdir -p staging/releases/${TAG}
 
           find release-artifacts/ -type f | while read file; do
             filename=$(basename "$file")
             cp "$file" "staging/${CHANNEL}/${filename}"
-            cp "$file" "staging/releases/${TAG}/${filename}"
           done
 
           echo "=== staging/${CHANNEL}/ ==="
           ls -lh staging/${CHANNEL}/
-          echo ""
-          echo "=== staging/releases/${TAG}/ ==="
-          ls -lh staging/releases/${TAG}/
 
       - name: Verify yml files present
         run: |
@@ -80,6 +68,7 @@ jobs:
       - name: Generate release-info.json
         run: |
           BASE_URL="https://clawdownload.honoacc.com/${CHANNEL}"
+          TAG="v${VERSION}"
 
           jq -n \
             --arg version "$VERSION" \
@@ -97,15 +86,7 @@ jobs:
                   arm64: ($base + "/HonoClaw-" + $version + "-mac-arm64.dmg")
                 },
                 win: {
-                  x64: ($base + "/HonoClaw-" + $version + "-win-x64.exe"),
-                  arm64: ($base + "/HonoClaw-" + $version + "-win-arm64.exe")
-                },
-                linux: {
-                  deb_amd64: ($base + "/HonoClaw-" + $version + "-linux-amd64.deb"),
-                  deb_arm64: ($base + "/HonoClaw-" + $version + "-linux-arm64.deb"),
-                  appimage_x64: ($base + "/HonoClaw-" + $version + "-linux-x86_64.AppImage"),
-                  appimage_arm64: ($base + "/HonoClaw-" + $version + "-linux-arm64.AppImage"),
-                  rpm_x64: ($base + "/HonoClaw-" + $version + "-linux-x86_64.rpm")
+                  x64: ($base + "/HonoClaw-" + $version + "-win-x64.exe")
                 }
               },
               changelog: $changelog
@@ -127,7 +108,7 @@ jobs:
           test -n "$R2_ACCOUNT_ID"
           echo "R2 endpoint: https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
-      - name: Upload archive assets to R2
+      - name: Upload latest files to R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -137,31 +118,14 @@ jobs:
         run: |
           ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
-          find "staging/releases/${TAG}" -maxdepth 1 -type f ! -name "*.yml" ! -name "release-info.json" | while read file; do
-            key="releases/${TAG}/$(basename "$file")"
-            echo "Uploading asset: $key"
-            aws s3 cp "$file" "s3://${R2_BUCKET}/${key}" \
-              --endpoint-url "$ENDPOINT" \
-              --cache-control "public,max-age=31536000,immutable"
-          done
-
-      - name: Upload channel files to R2
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-        run: |
-          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-
+          echo "Deleting existing latest files from R2..."
           aws s3 rm "s3://${R2_BUCKET}/${CHANNEL}/" \
             --recursive \
             --endpoint-url "$ENDPOINT" || true
 
           find "staging/${CHANNEL}" -maxdepth 1 -type f ! -name "*.yml" ! -name "release-info.json" | while read file; do
             key="${CHANNEL}/$(basename "$file")"
-            echo "Uploading cached asset: $key"
+            echo "Uploading asset: $key"
             aws s3 cp "$file" "s3://${R2_BUCKET}/${key}" \
               --endpoint-url "$ENDPOINT" \
               --cache-control "public,max-age=31536000,immutable"
@@ -193,10 +157,6 @@ jobs:
           aws s3 ls "s3://${R2_BUCKET}/${CHANNEL}/" --recursive --endpoint-url "$ENDPOINT"
 
           echo ""
-          echo "=== releases/${TAG}/ ==="
-          aws s3 ls "s3://${R2_BUCKET}/releases/${TAG}/" --recursive --endpoint-url "$ENDPOINT"
-
-          echo ""
           echo "=== Verify release-info.json ==="
           aws s3 cp "s3://${R2_BUCKET}/${CHANNEL}/release-info.json" /tmp/release-info.json --endpoint-url "$ENDPOINT"
           jq . /tmp/release-info.json
@@ -206,4 +166,4 @@ jobs:
           aws s3 ls "s3://${R2_BUCKET}/${CHANNEL}/" --recursive --endpoint-url "$ENDPOINT" | grep "\.yml$" || echo "(none found)"
 
           echo ""
-          echo "Manual R2 upload completed successfully!"
+          echo "Manual R2 latest-only upload completed successfully!"

@@ -51,11 +51,11 @@ asarUnpack:
 npmRebuild: false
 
 # Auto-update configuration
-# Primary: HonoACC Hong Kong update server
+# Primary: Cloudflare R2 + custom domain
 # Fallback: GitHub Releases
 publish:
   - provider: generic
-    url: https://claw.honoacc.com/latest
+    url: https://clawdownload.honoacc.com/latest
     useMultipleRangeRequest: false
   - provider: github
     owner: HonoACC
