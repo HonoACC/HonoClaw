@@ -117,17 +117,21 @@ jobs:
           HK_SSH_PORT: ${{ secrets.HK_SSH_PORT }}
           HK_SSH_USER: ${{ secrets.HK_SSH_USER }}
         run: |
+          tar -C staging/latest -czf staging/latest.tar.gz .
+
+          scp -i ~/.ssh/id_ed25519 -P "$HK_SSH_PORT" staging/latest.tar.gz \
+            "$HK_SSH_USER@$HK_SSH_HOST:/tmp/honoclaw-latest.tar.gz"
+
+          scp -i ~/.ssh/id_ed25519 -P "$HK_SSH_PORT" staging/release-info.json \
+            "$HK_SSH_USER@$HK_SSH_HOST:/tmp/honoclaw-release-info.json"
+
           ssh -i ~/.ssh/id_ed25519 -p "$HK_SSH_PORT" "$HK_SSH_USER@$HK_SSH_HOST" '
             mkdir -p /var/www/claw-honoacc/latest
             find /var/www/claw-honoacc/latest -mindepth 1 -maxdepth 1 -delete || true
+            tar -xzf /tmp/honoclaw-latest.tar.gz -C /var/www/claw-honoacc/latest
+            mv /tmp/honoclaw-release-info.json /var/www/claw-honoacc/release-info.json
+            rm -f /tmp/honoclaw-latest.tar.gz
           '
-
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/id_ed25519 -p $HK_SSH_PORT" \
-            staging/latest/ "$HK_SSH_USER@$HK_SSH_HOST:/var/www/claw-honoacc/latest/"
-
-          scp -i ~/.ssh/id_ed25519 -P "$HK_SSH_PORT" staging/release-info.json \
-            "$HK_SSH_USER@$HK_SSH_HOST:/var/www/claw-honoacc/release-info.json"
 
       - name: Verify server files
         env:
