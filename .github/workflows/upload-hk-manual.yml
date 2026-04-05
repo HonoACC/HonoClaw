@@ -1,0 +1,150 @@
+name: Upload Existing Release Artifacts to HK Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'GitHub Actions run id containing release-* artifacts (e.g. 23946461751)'
+        required: true
+      version:
+        description: 'Release version (e.g. 0.3.6)'
+        required: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  upload-hk-manual:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download release artifacts from an existing run
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.run_id }}
+          path: release-artifacts
+          pattern: release-*
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List downloaded artifacts
+        run: |
+          echo "=== Downloaded artifacts ==="
+          find release-artifacts/ -type f -exec ls -lh {} \;
+          echo ""
+          echo "=== File tree ==="
+          tree release-artifacts/ || find release-artifacts/ -print
+
+      - name: Prepare latest directory
+        run: |
+          VERSION="${{ inputs.version }}"
+          mkdir -p staging/latest
+
+          find release-artifacts/ -type f | while read file; do
+            filename=$(basename "$file")
+            cp "$file" "staging/latest/${filename}"
+          done
+
+          echo "=== staging/latest/ ==="
+          ls -lh staging/latest/
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Verify yml files present
+        run: |
+          echo "=== staging/latest/ (update metadata) ==="
+          ls -la staging/latest/*.yml 2>/dev/null || echo "No yml files found"
+
+      - name: Normalize mac update metadata
+        run: |
+          python3 scripts/normalize-latest-mac-yml.py "staging/latest/latest-mac.yml"
+
+      - name: Generate release-info.json
+        run: |
+          VERSION="${VERSION}"
+          BASE_URL="https://claw.honoacc.com/latest"
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg channel "latest" \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg base "$BASE_URL" \
+            --arg changelog "https://github.com/${{ github.repository }}/releases/tag/v${VERSION}" \
+            '{
+              version: $version,
+              channel: $channel,
+              releaseDate: $date,
+              downloads: {
+                mac: {
+                  x64: ($base + "/HonoClaw-" + $version + "-mac-x64.dmg"),
+                  arm64: ($base + "/HonoClaw-" + $version + "-mac-arm64.dmg")
+                },
+                win: {
+                  x64: ($base + "/HonoClaw-" + $version + "-win-x64.exe")
+                }
+              },
+              changelog: $changelog
+            }' > staging/release-info.json
+
+          echo "=== release-info.json ==="
+          cat staging/release-info.json
+
+      - name: Setup SSH
+        env:
+          HK_SSH_PRIVATE_KEY: ${{ secrets.HK_SSH_PRIVATE_KEY }}
+          HK_SSH_HOST: ${{ secrets.HK_SSH_HOST }}
+          HK_SSH_PORT: ${{ secrets.HK_SSH_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$HK_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$HK_SSH_PORT" "$HK_SSH_HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        env:
+          HK_SSH_HOST: ${{ secrets.HK_SSH_HOST }}
+          HK_SSH_PORT: ${{ secrets.HK_SSH_PORT }}
+          HK_SSH_USER: ${{ secrets.HK_SSH_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p "$HK_SSH_PORT" "$HK_SSH_USER@$HK_SSH_HOST" "echo 'SSH connection OK'"
+
+      - name: Upload latest files to HK server
+        env:
+          HK_SSH_HOST: ${{ secrets.HK_SSH_HOST }}
+          HK_SSH_PORT: ${{ secrets.HK_SSH_PORT }}
+          HK_SSH_USER: ${{ secrets.HK_SSH_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p "$HK_SSH_PORT" "$HK_SSH_USER@$HK_SSH_HOST" '
+            mkdir -p /var/www/claw-honoacc/latest
+            find /var/www/claw-honoacc/latest -mindepth 1 -maxdepth 1 -delete || true
+          '
+
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/id_ed25519 -p $HK_SSH_PORT" \
+            staging/latest/ "$HK_SSH_USER@$HK_SSH_HOST:/var/www/claw-honoacc/latest/"
+
+          scp -i ~/.ssh/id_ed25519 -P "$HK_SSH_PORT" staging/release-info.json \
+            "$HK_SSH_USER@$HK_SSH_HOST:/var/www/claw-honoacc/release-info.json"
+
+      - name: Verify server files
+        env:
+          HK_SSH_HOST: ${{ secrets.HK_SSH_HOST }}
+          HK_SSH_PORT: ${{ secrets.HK_SSH_PORT }}
+          HK_SSH_USER: ${{ secrets.HK_SSH_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p "$HK_SSH_PORT" "$HK_SSH_USER@$HK_SSH_HOST" '
+            echo "=== /var/www/claw-honoacc/latest ==="
+            ls -lah /var/www/claw-honoacc/latest
+            echo
+            echo "=== /var/www/claw-honoacc/release-info.json ==="
+            cat /var/www/claw-honoacc/release-info.json
+          '
+
+      - name: Summary
+        run: |
+          echo "Upload completed successfully."
+          echo "Latest path: https://claw.honoacc.com/latest"
+          echo "Release info: https://claw.honoacc.com/release-info.json"
