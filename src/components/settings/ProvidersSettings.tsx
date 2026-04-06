@@ -37,7 +37,7 @@ import {
   resolveProviderApiKeyForSave,
   resolveProviderModelForSave,
   shouldShowProviderModelId,
-  shouldInvertInDark,
+  getProviderIconClass,
 } from '@/lib/providers';
 import {
   buildProviderAccountId,
@@ -517,7 +517,7 @@ function ProviderCard({
         <div className="flex items-center gap-4">
           <div className="h-[42px] w-[42px] shrink-0 flex items-center justify-center text-foreground border border-black/5 dark:border-white/10 rounded-full bg-black/5 dark:bg-white/5 shadow-sm group-hover:scale-105 transition-transform">
             {getProviderIconUrl(account.vendorId) ? (
-              <img src={getProviderIconUrl(account.vendorId)} alt={typeInfo?.name || account.vendorId} className={cn('h-5 w-5', shouldInvertInDark(account.vendorId) && 'dark:invert')} />
+              <img src={getProviderIconUrl(account.vendorId)} alt={typeInfo?.name || account.vendorId} className={cn('h-5 w-5', getProviderIconClass(account.vendorId))} />
             ) : (
               <span className="text-xl">{vendor?.icon || typeInfo?.icon || '⚙️'}</span>
             )}
@@ -1256,7 +1256,7 @@ function AddProviderDialog({
                 >
                   <div className="h-12 w-12 mx-auto mb-3 flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-xl shadow-sm border border-black/5 dark:border-white/5 group-hover:scale-105 transition-transform">
                     {getProviderIconUrl(type.id) ? (
-                      <img src={getProviderIconUrl(type.id)} alt={type.name} className={cn('h-6 w-6', shouldInvertInDark(type.id) && 'dark:invert')} />
+                      <img src={getProviderIconUrl(type.id)} alt={type.name} className={cn('h-6 w-6', getProviderIconClass(type.id))} />
                     ) : (
                       <span className="text-2xl">{type.icon}</span>
                     )}
@@ -1270,7 +1270,7 @@ function AddProviderDialog({
               <div className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-card border border-black/5 dark:border-white/5 shadow-sm">
                 <div className="h-10 w-10 shrink-0 flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-xl">
                   {getProviderIconUrl(selectedType!) ? (
-                    <img src={getProviderIconUrl(selectedType!)} alt={typeInfo?.name} className={cn('h-6 w-6', shouldInvertInDark(selectedType!) && 'dark:invert')} />
+                    <img src={getProviderIconUrl(selectedType!)} alt={typeInfo?.name} className={cn('h-6 w-6', getProviderIconClass(selectedType!))} />
                   ) : (
                     <span className="text-xl">{typeInfo?.icon}</span>
                   )}
@@ -1291,18 +1291,34 @@ function AddProviderDialog({
                 >
                     {t('aiProviders.dialog.change')}
                   </button>
-                  {effectiveDocsUrl && (
+                  {(effectiveDocsUrl || typeInfo?.apiKeyUrl) && (
                     <>
                       <span className="mx-2 text-foreground/20">|</span>
-                      <a
-                        href={effectiveDocsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[13px] text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
-                      >
-                        {t('aiProviders.dialog.customDoc')}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
+                      {effectiveDocsUrl && (
+                        <a
+                          href={effectiveDocsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[13px] text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
+                        >
+                          {t('aiProviders.dialog.customDoc')}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                      {effectiveDocsUrl && typeInfo?.apiKeyUrl && (
+                        <span className="mx-2 text-foreground/20">|</span>
+                      )}
+                      {typeInfo?.apiKeyUrl && (
+                        <a
+                          href={typeInfo.apiKeyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[13px] text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
+                        >
+                          {t('aiProviders.oauth.getApiKey')}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
                     </>
                   )}
                 </div>

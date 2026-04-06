@@ -101,7 +101,7 @@ import {
   getProviderIconUrl,
   resolveProviderApiKeyForSave,
   resolveProviderModelForSave,
-  shouldInvertInDark,
+  getProviderIconClass,
   shouldShowProviderModelId,
 } from '@/lib/providers';
 import {
@@ -1231,7 +1231,7 @@ function ProviderContent({
                   <img
                     src={selectedProviderIconUrl}
                     alt={selectedProviderData.name}
-                    className={cn('h-4 w-4 shrink-0', shouldInvertInDark(selectedProviderData.id) && 'dark:invert')}
+                    className={cn('h-4 w-4 shrink-0', getProviderIconClass(selectedProviderData.id))}
                   />
                 ) : (
                   <span className="text-sm leading-none shrink-0">{selectedProviderData.icon}</span>
@@ -1275,7 +1275,7 @@ function ProviderContent({
                         <img
                           src={iconUrl}
                           alt={p.name}
-                          className={cn('h-4 w-4 shrink-0', shouldInvertInDark(p.id) && 'dark:invert')}
+                          className={cn('h-4 w-4 shrink-0', getProviderIconClass(p.id))}
                         />
                       ) : (
                         <span className="text-sm leading-none shrink-0">{p.icon}</span>
@@ -1875,7 +1875,7 @@ function CompleteContent({ selectedProvider, installedSkills }: CompleteContentP
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
           <span>{t('complete.provider')}</span>
           <span className="text-green-400">
-            {providerData ? <span className="flex items-center gap-1.5">{getProviderIconUrl(providerData.id) ? <img src={getProviderIconUrl(providerData.id)} alt={providerData.name} className={`h-4 w-4 inline-block ${shouldInvertInDark(providerData.id) ? 'dark:invert' : ''}`} /> : providerData.icon} {providerData.id === 'custom' ? t('settings:aiProviders.custom') : providerData.name}</span> : '—'}
+            {providerData ? <span className="flex items-center gap-1.5">{getProviderIconUrl(providerData.id) ? <img src={getProviderIconUrl(providerData.id)} alt={providerData.name} className={`h-4 w-4 inline-block ${getProviderIconClass(providerData.id)}`} /> : providerData.icon} {providerData.id === 'custom' ? t('settings:aiProviders.custom') : providerData.name}</span> : '—'}
           </span>
         </div>
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">

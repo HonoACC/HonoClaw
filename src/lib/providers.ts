@@ -205,6 +205,13 @@ export function shouldInvertInDark(type: ProviderType | string): boolean {
   return type !== 'honoapi' && type !== 'honoapi-cn';
 }
 
+export function getProviderIconClass(type: ProviderType | string): string {
+  if (type === 'honoapi' || type === 'honoapi-cn') {
+    return 'brightness-0 dark:brightness-0 dark:invert';
+  }
+  return shouldInvertInDark(type) ? 'dark:invert' : '';
+}
+
 export const SETUP_PROVIDERS = PROVIDER_TYPE_INFO;
 
 export function getProviderTypeInfo(type: ProviderType): ProviderTypeInfo | undefined {
