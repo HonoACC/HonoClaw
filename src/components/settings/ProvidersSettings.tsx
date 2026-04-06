@@ -895,8 +895,8 @@ function isHonoApiTemplate(id: AddProviderDialogSelection | null): id is 'honoap
 
 function getHonoApiTemplateDefaults(id: 'honoapi-template' | 'honoapi-cn-template') {
   return id === 'honoapi-cn-template'
-    ? { name: 'HonoAPI-cn', baseUrl: 'http://cn-api.honoacc.com', modelId: 'gpt-5.4', apiKeyUrl: 'http://cn-api.honoacc.com/' }
-    : { name: 'HonoAPI', baseUrl: 'http://api.honoacc.com', modelId: 'gpt-5.4', apiKeyUrl: 'http://api.honoacc.com/' };
+    ? { name: 'HonoAPI-cn', baseUrl: 'https://cn-api.honoacc.com', modelId: 'gpt-5.4', apiKeyUrl: 'https://cn-api.honoacc.com/' }
+    : { name: 'HonoAPI', baseUrl: 'https://api.honoacc.com', modelId: 'gpt-5.4', apiKeyUrl: 'https://api.honoacc.com/' };
 }
 
 interface AddProviderDialogProps {
