@@ -16,8 +16,6 @@ export const PROVIDER_TYPES = [
   'siliconflow',
   'minimax-portal',
   'minimax-portal-cn',
-  'honoapi',
-  'honoapi-cn',
   'modelstudio',
   'ollama',
   'custom',
@@ -34,8 +32,6 @@ export const BUILTIN_PROVIDER_TYPES = [
   'siliconflow',
   'minimax-portal',
   'minimax-portal-cn',
-  'honoapi',
-  'honoapi-cn',
   'modelstudio',
   'ollama',
 ] as const;
@@ -178,8 +174,6 @@ export const PROVIDER_TYPE_INFO: ProviderTypeInfo[] = [
   { id: 'moonshot', name: 'Moonshot (CN)', icon: '🌙', placeholder: 'sk-...', model: 'Kimi', requiresApiKey: true, defaultBaseUrl: 'https://api.moonshot.cn/v1', defaultModelId: 'kimi-k2.5', docsUrl: 'https://platform.moonshot.cn/' },
   { id: 'siliconflow', name: 'SiliconFlow (CN)', icon: '🌊', placeholder: 'sk-...', model: 'Multi-Model', requiresApiKey: true, defaultBaseUrl: 'https://api.siliconflow.cn/v1', showModelId: true, showModelIdInDevModeOnly: true, modelIdPlaceholder: 'deepseek-ai/DeepSeek-V3', defaultModelId: 'deepseek-ai/DeepSeek-V3', docsUrl: 'https://docs.siliconflow.cn/cn/userguide/introduction' },
   { id: 'minimax-portal', name: 'MiniMax (Global)', icon: '☁️', placeholder: 'sk-...', model: 'MiniMax', requiresApiKey: false, isOAuth: true, supportsApiKey: true, defaultModelId: 'MiniMax-M2.7', showModelId: true, showModelIdInDevModeOnly: true, modelIdPlaceholder: 'MiniMax-M2.7', apiKeyUrl: 'https://platform.minimax.io' },
-  { id: 'honoapi', name: 'HonoAPI', icon: 'H', placeholder: 'hk-...', model: 'GPT', requiresApiKey: true, defaultBaseUrl: 'http://api.honoacc.com', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'gpt-5.4', defaultModelId: 'gpt-5.4', apiKeyUrl: 'http://api.honoacc.com' },
-  { id: 'honoapi-cn', name: 'HonoAPI-cn', icon: 'H', placeholder: 'hk-...', model: 'GPT', requiresApiKey: true, defaultBaseUrl: 'http://cn-api.honoacc.com', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'gpt-5.4', defaultModelId: 'gpt-5.4', apiKeyUrl: 'http://cn-api.honoacc.com' },
   { id: 'modelstudio', name: 'Model Studio', icon: '☁️', placeholder: 'sk-...', model: 'Qwen', requiresApiKey: true, defaultBaseUrl: 'https://coding.dashscope.aliyuncs.com/v1', showBaseUrl: true, defaultModelId: 'qwen3.5-plus', showModelId: true, showModelIdInDevModeOnly: true, modelIdPlaceholder: 'qwen3.5-plus', apiKeyUrl: 'https://bailian.console.aliyun.com/', hidden: true },
   { id: 'ark', name: 'ByteDance Ark', icon: 'A', placeholder: 'your-ark-api-key', model: 'Doubao', requiresApiKey: true, defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'ep-20260228000000-xxxxx', docsUrl: 'https://www.volcengine.com/', codePlanPresetBaseUrl: 'https://ark.cn-beijing.volces.com/api/coding/v3', codePlanPresetModelId: 'ark-code-latest', codePlanDocsUrl: 'https://www.volcengine.com/docs/82379/1928261?lang=zh' },
   { id: 'ollama', name: 'Ollama', icon: '🦙', placeholder: 'Not required', requiresApiKey: false, defaultBaseUrl: 'http://localhost:11434/v1', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'qwen3:latest' },
@@ -201,14 +195,11 @@ export function getProviderIconUrl(type: ProviderType | string): string | undefi
   return providerIcons[type];
 }
 
-export function shouldInvertInDark(type: ProviderType | string): boolean {
-  return type !== 'honoapi' && type !== 'honoapi-cn';
+export function shouldInvertInDark(_type: ProviderType | string): boolean {
+  return true;
 }
 
 export function getProviderIconClass(type: ProviderType | string): string {
-  if (type === 'honoapi' || type === 'honoapi-cn') {
-    return 'brightness-0 dark:brightness-0 dark:invert';
-  }
   return shouldInvertInDark(type) ? 'dark:invert' : '';
 }
 
