@@ -1148,6 +1148,7 @@ function AddProviderDialog({
     const priority = (id: string): number => {
       if (id === 'honoapi') return 0;
       if (id === 'honoapi-cn') return 1;
+      if (id === 'custom') return 999;
       return 100;
     };
     const delta = priority(left.id) - priority(right.id);

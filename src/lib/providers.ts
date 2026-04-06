@@ -201,8 +201,8 @@ export function getProviderIconUrl(type: ProviderType | string): string | undefi
   return providerIcons[type];
 }
 
-export function shouldInvertInDark(_type: ProviderType | string): boolean {
-  return true;
+export function shouldInvertInDark(type: ProviderType | string): boolean {
+  return type !== 'honoapi' && type !== 'honoapi-cn';
 }
 
 export const SETUP_PROVIDERS = PROVIDER_TYPE_INFO;
