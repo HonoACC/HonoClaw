@@ -1026,9 +1026,12 @@ export async function getActiveOpenClawProviders(): Promise<Set<string>> {
 }
 
 /**
- * Read models.providers entries and agents.defaults.model from openclaw.json.
- * Used by ClawX to seed the provider store when it's empty but providers are
- * configured externally (e.g. via CLI or by editing openclaw.json directly).
+ * Read explicit models.providers entries and agents.defaults.model from openclaw.json.
+ *
+ * IMPORTANT: this helper is used to seed provider accounts shown in the desktop UI.
+ * It must only return providers that are explicitly declared under models.providers,
+ * otherwise env/auth-profile/default-model inference can resurrect phantom providers
+ * (for example OpenAI) after the user deletes them from the UI.
  */
 export async function getOpenClawProvidersConfig(): Promise<{
   providers: Record<string, Record<string, unknown>>;
@@ -1054,21 +1057,6 @@ export async function getOpenClawProvidersConfig(): Promise<{
         : undefined;
     const defaultModel =
       typeof modelConfig?.primary === 'string' ? modelConfig.primary : undefined;
-
-    const authProviders = new Set<string>();
-    const auth = config.auth as Record<string, unknown> | undefined;
-    addProvidersFromProfileEntries(auth?.profiles as Record<string, unknown> | undefined, authProviders);
-
-    const authProfileProviders = await getProvidersFromAuthProfileStores();
-    for (const provider of authProfileProviders) {
-      authProviders.add(provider);
-    }
-
-    for (const provider of authProviders) {
-      if (!providers[provider]) {
-        providers[provider] = {};
-      }
-    }
 
     return { providers, defaultModel };
   } catch {

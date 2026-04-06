@@ -118,9 +118,5 @@ export function buildProviderListItems(
       });
   }
 
-  return safeStatuses.map((status) => ({
-    account: legacyProviderToAccount(status),
-    vendor: vendorMap.get(status.type),
-    status,
-  }));
+  return [];
 }

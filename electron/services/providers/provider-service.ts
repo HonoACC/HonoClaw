@@ -158,8 +158,11 @@ export class ProviderService {
       if (existingIds.has(key)) continue;
 
       const definition = getProviderDefinition(key);
-      const isBuiltin = (BUILTIN_PROVIDER_TYPES as readonly string[]).includes(key);
-      const vendorId = isBuiltin ? key : 'custom';
+      const honoApiMatch = key.match(/^(honoapi(?:-cn)?)(?:-[a-z0-9]{8})?$/);
+      const normalizedKey = honoApiMatch ? honoApiMatch[1] : key;
+      const definitionForKey = getProviderDefinition(normalizedKey);
+      const isBuiltin = (BUILTIN_PROVIDER_TYPES as readonly string[]).includes(normalizedKey);
+      const vendorId = isBuiltin ? normalizedKey : 'custom';
 
       // Skip if an account with this vendorId already exists (e.g. user already
       // created "openrouter-uuid" via UI — no need to import bare "openrouter").
@@ -172,23 +175,23 @@ export class ProviderService {
         continue;
       }
 
-      const baseUrl = typeof entry.baseUrl === 'string' ? entry.baseUrl : definition?.providerConfig?.baseUrl;
+      const baseUrl = typeof entry.baseUrl === 'string' ? entry.baseUrl : definitionForKey?.providerConfig?.baseUrl;
 
       // Infer model from the default model if it belongs to this provider
       let model: string | undefined;
       if (defaultModelProvider === key && defaultModel) {
         model = defaultModel;
-      } else if (definition?.defaultModelId) {
-        model = definition.defaultModelId;
+      } else if (definitionForKey?.defaultModelId) {
+        model = definitionForKey.defaultModelId;
       }
 
       const account: ProviderAccount = {
         id: key,
         vendorId: (vendorId as ProviderAccount['vendorId'] as ProviderType),
-        label: definition?.name ?? key.charAt(0).toUpperCase() + key.slice(1),
-        authMode: definition?.defaultAuthMode ?? 'api_key',
+        label: definitionForKey?.name ?? normalizedKey.charAt(0).toUpperCase() + normalizedKey.slice(1),
+        authMode: definitionForKey?.defaultAuthMode ?? 'api_key',
         baseUrl,
-        apiProtocol: definition?.providerConfig?.api,
+        apiProtocol: definitionForKey?.providerConfig?.api,
         headers: (entry.headers && typeof entry.headers === 'object'
           ? (entry.headers as Record<string, string>)
           : undefined),

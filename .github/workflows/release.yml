@@ -1,5 +1,5 @@
 # HonoClaw Release Workflow
-# Builds release artifacts for macOS and Windows, uploads them as workflow artifacts,
+# Builds Windows release artifacts, uploads them as workflow artifacts,
 # publishes them to GitHub Releases, and leaves server deployment to a separate manual workflow.
 
 name: Release
@@ -20,16 +20,7 @@ permissions:
 
 jobs:
   release:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            platform: mac
-          - os: windows-latest
-            platform: win
-
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
@@ -49,24 +40,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Download uv binaries for macOS
-        if: matrix.platform == 'mac'
-        run: |
-          for attempt in 1 2 3; do
-            echo "uv mac download attempt $attempt/3"
-            if pnpm run uv:download:mac; then
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "uv mac download failed, retrying in 10s..."
-              sleep 10
-            fi
-          done
-          echo "uv mac download failed after 3 attempts"
-          exit 1
-
       - name: Download uv binaries for Windows
-        if: matrix.platform == 'win'
         shell: bash
         run: |
           for attempt in 1 2 3; do
@@ -82,59 +56,10 @@ jobs:
           echo "uv win download failed after 3 attempts"
           exit 1
 
-      - name: Free disk space (macOS)
-        if: matrix.platform == 'mac'
-        run: |
-          echo "=== Disk usage before cleanup ==="
-          df -h /
-          sudo rm -rf /usr/local/lib/android || true
-          sudo rm -rf /usr/share/dotnet || true
-          sudo rm -rf /usr/local/share/powershell || true
-          sudo rm -rf /usr/local/share/chromium || true
-          sudo rm -rf /usr/local/lib/node_modules || true
-          rm -rf ~/Library/Caches/electron-builder/dmg-builder* || true
-          brew cleanup --prune=all 2>/dev/null || true
-          echo "=== Disk usage after cleanup ==="
-          df -h /
-
-      - name: Build macOS
-        if: matrix.platform == 'mac'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MAC_CERTS: ${{ secrets.MAC_CERTS }}
-          MAC_CERTS_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          ulimit -n 65536
-          echo "File descriptor limit: $(ulimit -n)"
-
-          if [ -n "$MAC_CERTS" ] && [ -n "$MAC_CERTS_PASSWORD" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
-            echo "Signing secrets detected: building signed/notarized macOS package"
-            export CSC_LINK="$MAC_CERTS"
-            export CSC_KEY_PASSWORD="$MAC_CERTS_PASSWORD"
-            export APPLE_ID
-            export APPLE_APP_SPECIFIC_PASSWORD
-            export APPLE_TEAM_ID
-            pnpm run package:mac
-          else
-            echo "macOS signing secrets missing: building unsigned macOS package"
-            export CSC_IDENTITY_AUTO_DISCOVERY=false
-            unset CSC_LINK
-            unset CSC_KEY_PASSWORD
-            unset APPLE_ID
-            unset APPLE_APP_SPECIFIC_PASSWORD
-            unset APPLE_TEAM_ID
-            pnpm run package:mac
-          fi
-
       - name: Build Windows
-        if: matrix.platform == 'win'
         run: pnpm run package:win
 
       - name: Detect Windows release channel
-        if: matrix.platform == 'win'
         id: win-channel
         shell: bash
         env:
@@ -160,7 +85,7 @@ jobs:
           fi
 
       - name: Validate unsigned Windows artifacts before SignPath
-        if: matrix.platform == 'win' && steps.win-channel.outputs.should_sign == 'true'
+        if: steps.win-channel.outputs.should_sign == 'true'
         shell: pwsh
         run: |
           $unsignedExeFiles = Get-ChildItem -Path "release" -Filter *.exe -File
@@ -173,7 +98,7 @@ jobs:
           $unsignedExeFiles | ForEach-Object { Write-Host " - $($_.Name)" }
 
       - name: Upload unsigned Windows artifacts for SignPath
-        if: matrix.platform == 'win' && steps.win-channel.outputs.should_sign == 'true'
+        if: steps.win-channel.outputs.should_sign == 'true'
         id: upload-unsigned-windows-artifact
         uses: actions/upload-artifact@v4
         with:
@@ -182,7 +107,7 @@ jobs:
           retention-days: 1
 
       - name: Sign Windows artifacts via SignPath
-        if: matrix.platform == 'win' && steps.win-channel.outputs.should_sign == 'true'
+        if: steps.win-channel.outputs.should_sign == 'true'
         id: signpath-sign-windows
         uses: signpath/github-action-submit-signing-request@v2
         with:
@@ -195,7 +120,7 @@ jobs:
           output-artifact-directory: release/signed
 
       - name: Replace unsigned executables with signed ones
-        if: matrix.platform == 'win' && steps.win-channel.outputs.should_sign == 'true'
+        if: steps.win-channel.outputs.should_sign == 'true'
         shell: pwsh
         run: |
           Write-Host "SignPath GitHub artifact ID: ${{ steps.upload-unsigned-windows-artifact.outputs.artifact-id }}"
@@ -217,7 +142,7 @@ jobs:
           Write-Host "Signed executables copied to release/ ($($finalExeFiles.Count) file(s))"
 
       - name: Update latest.yml sha512 after code signing
-        if: matrix.platform == 'win' && steps.win-channel.outputs.should_sign == 'true'
+        if: steps.win-channel.outputs.should_sign == 'true'
         shell: pwsh
         run: |
           $ymlFiles = Get-ChildItem -Path "release" -Filter "*.yml" -File | Where-Object { $_.Name -ne "builder-debug.yml" }
@@ -269,11 +194,8 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-${{ matrix.platform }}
+          name: release-win
           path: |
-            release/*.dmg
-            release/*.zip
-            release/*.blockmap
             release/*.exe
             release/*.yml
             !release/builder-debug.yml
@@ -308,9 +230,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            release-artifacts/**/*.dmg
-            release-artifacts/**/*.zip
-            release-artifacts/**/*.exe
+                        release-artifacts/**/*.exe
             release-artifacts/**/*.yml
           draft: false
           prerelease: true
@@ -325,10 +245,6 @@ jobs:
 
             Please select the appropriate installer for your operating system and architecture:
 
-            #### macOS
-            - **Apple Silicon (M1/M2/M3/M4)**: `HonoClaw-*-mac-arm64.dmg`
-            - **Intel (x64)**: `HonoClaw-*-mac-x64.dmg`
-
             #### Windows
             - **Installer (x64)**: `HonoClaw-*-win-x64.exe`
 
@@ -338,7 +254,6 @@ jobs:
 
             ### ⚠️ Installation Notes
 
-            - **macOS**: On first launch, you may see "cannot verify developer". Go to System Preferences → Security & Privacy to allow the app to run
             - **Windows**: SmartScreen may block the app. Click "More info" → "Run anyway" to proceed
 
             ---

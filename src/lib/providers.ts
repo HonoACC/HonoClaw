@@ -185,7 +185,7 @@ export const PROVIDER_TYPE_INFO: ProviderTypeInfo[] = [
     id: 'honoapi',
     name: 'HonoAPI',
     icon: 'H',
-    placeholder: 'hk-...',
+    placeholder: 'sk-...',
     model: 'GPT',
     requiresApiKey: true,
     defaultBaseUrl: 'https://api.honoacc.com',
@@ -200,7 +200,7 @@ export const PROVIDER_TYPE_INFO: ProviderTypeInfo[] = [
     id: 'honoapi-cn',
     name: 'HonoAPI-cn',
     icon: 'H',
-    placeholder: 'hk-...',
+    placeholder: 'sk-...',
     model: 'GPT',
     requiresApiKey: true,
     defaultBaseUrl: 'https://cn-api.honoacc.com',
@@ -237,11 +237,14 @@ export function isProtocolSelectableProviderType(type: ProviderType | string): b
   return isCustomLikeProviderType(type);
 }
 
-export function shouldInvertInDark(_type: ProviderType | string): boolean {
-  return true;
+export function shouldInvertInDark(type: ProviderType | string): boolean {
+  return type === 'honoapi' || type === 'honoapi-cn' || true;
 }
 
 export function getProviderIconClass(type: ProviderType | string): string {
+  if (type === 'honoapi' || type === 'honoapi-cn') {
+    return 'brightness-0 dark:brightness-0 dark:invert';
+  }
   return shouldInvertInDark(type) ? 'dark:invert' : '';
 }
 

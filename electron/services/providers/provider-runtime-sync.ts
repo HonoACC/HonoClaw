@@ -73,6 +73,9 @@ function shouldUseExplicitDefaultOverride(config: ProviderConfig, runtimeProvide
 }
 
 export function getOpenClawProviderKey(type: string, providerId: string): string {
+  if (type === 'honoapi' || type === 'honoapi-cn') {
+    return type;
+  }
   if (isUnregisteredProviderType(type)) {
     // If the providerId is already a runtime key (e.g. re-seeded from openclaw.json
     // as "custom-XXXXXXXX"), return it directly to avoid double-hashing.

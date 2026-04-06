@@ -1231,7 +1231,7 @@ function ProviderContent({
               )}
               <span className={cn('truncate text-left', !selectedProvider && 'text-muted-foreground')}>
                 {selectedProviderData
-                  ? `${selectedProviderData.name}${selectedProviderData.model ? ` — ${selectedProviderData.model}` : ''}`
+                  ? `${selectedProviderData.name}${(selectedProviderData.id === 'honoapi' || selectedProviderData.id === 'honoapi-cn') ? '' : (selectedProviderData.model ? ` — ${selectedProviderData.model}` : '')}`
                   : t('provider.selectPlaceholder')}
               </span>
             </div>
@@ -1270,7 +1270,7 @@ function ProviderContent({
                       ) : (
                         <span className="text-sm leading-none shrink-0">{p.icon}</span>
                       )}
-                      <span className="truncate">{p.name}{p.model ? ` — ${p.model}` : ''}</span>
+                      <span className="truncate">{p.name}{(p.id === 'honoapi' || p.id === 'honoapi-cn') ? '' : (p.model ? ` — ${p.model}` : '')}</span>
                     </div>
                     {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
                   </button>
@@ -1389,6 +1389,11 @@ function ProviderContent({
               <p className="text-xs text-muted-foreground">
                 {t('provider.modelIdDesc')}
               </p>
+              {(selectedProviderData?.id === 'honoapi' || selectedProviderData?.id === 'honoapi-cn') && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedProviderData.id === 'honoapi-cn' ? t('settings:aiProviders.honoapi.descriptionCn') : t('settings:aiProviders.honoapi.description')}
+                </p>
+              )}
             </div>
           )}
 

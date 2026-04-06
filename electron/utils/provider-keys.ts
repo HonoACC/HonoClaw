@@ -1,4 +1,4 @@
-const MULTI_INSTANCE_PROVIDER_TYPES = new Set(['custom', 'honoapi', 'honoapi-cn', 'ollama']);
+const MULTI_INSTANCE_PROVIDER_TYPES = new Set(['custom', 'ollama']);
 
 export const OPENCLAW_PROVIDER_KEY_MINIMAX = 'minimax-portal';
 export const OPENCLAW_PROVIDER_KEY_MOONSHOT = 'moonshot';
