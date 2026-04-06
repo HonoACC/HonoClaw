@@ -38,6 +38,8 @@ import {
   resolveProviderModelForSave,
   shouldShowProviderModelId,
   getProviderIconClass,
+  isCustomLikeProviderType,
+  isProtocolSelectableProviderType,
 } from '@/lib/providers';
 import {
   buildProviderAccountId,
@@ -122,11 +124,11 @@ function isArkCodePlanMode(
 }
 
 function shouldShowUserAgentField(account: ProviderAccount): boolean {
-  return account.vendorId === 'custom';
+  return isCustomLikeProviderType(account.vendorId);
 }
 
 function shouldShowUserAgentFieldForNewProvider(providerType: ProviderType | null): boolean {
-  return providerType === 'custom';
+  return providerType ? isCustomLikeProviderType(providerType) : false;
 }
 
 function getAuthModeLabel(
@@ -429,7 +431,7 @@ function ProviderCard({
         setValidating(true);
         const result = await onValidateKey(newKey, {
           baseUrl: baseUrl.trim() || undefined,
-          apiProtocol: (account.vendorId === 'custom' || account.vendorId === 'ollama') ? apiProtocol : undefined,
+          apiProtocol: (isProtocolSelectableProviderType(account.vendorId) || account.vendorId === 'ollama') ? apiProtocol : undefined,
         });
         setValidating(false);
         if (!result.valid) {
@@ -451,7 +453,7 @@ function ProviderCard({
         if (typeInfo?.showBaseUrl && (baseUrl.trim() || undefined) !== (account.baseUrl || undefined)) {
           updates.baseUrl = baseUrl.trim() || undefined;
         }
-        if ((account.vendorId === 'custom' || account.vendorId === 'ollama') && apiProtocol !== account.apiProtocol) {
+        if ((isProtocolSelectableProviderType(account.vendorId) || account.vendorId === 'ollama') && apiProtocol !== account.apiProtocol) {
           updates.apiProtocol = apiProtocol;
         }
         if (showModelIdField && (modelId.trim() || undefined) !== (account.model || undefined)) {
@@ -694,7 +696,7 @@ function ProviderCard({
                   )}
                 </div>
               )}
-              {account.vendorId === 'custom' && (
+              {isProtocolSelectableProviderType(account.vendorId) && (
                 <div className="space-y-1.5 pt-2">
                   <Label className={currentLabelClasses}>{t('aiProviders.dialog.protocol', 'Protocol')}</Label>
                   <div className="flex gap-2 text-[13px]">
@@ -887,18 +889,6 @@ function ProviderCard({
   );
 }
 
-type AddProviderDialogSelection = ProviderType | 'honoapi-template' | 'honoapi-cn-template';
-
-function isHonoApiTemplate(id: AddProviderDialogSelection | null): id is 'honoapi-template' | 'honoapi-cn-template' {
-  return id === 'honoapi-template' || id === 'honoapi-cn-template';
-}
-
-function getHonoApiTemplateDefaults(id: 'honoapi-template' | 'honoapi-cn-template') {
-  return id === 'honoapi-cn-template'
-    ? { name: 'HonoAPI-cn', baseUrl: 'https://cn-api.honoacc.com', modelId: 'gpt-5.4', apiKeyUrl: 'https://cn-api.honoacc.com/' }
-    : { name: 'HonoAPI', baseUrl: 'https://api.honoacc.com', modelId: 'gpt-5.4', apiKeyUrl: 'https://api.honoacc.com/' };
-}
-
 interface AddProviderDialogProps {
   existingVendorIds: Set<string>;
   vendors: ProviderVendorInfo[];
@@ -932,7 +922,7 @@ function AddProviderDialog({
   devModeUnlocked,
 }: AddProviderDialogProps) {
   const { t, i18n } = useTranslation('settings');
-  const [selectedType, setSelectedType] = useState<AddProviderDialogSelection | null>(null);
+  const [selectedType, setSelectedType] = useState<ProviderType | null>(null);
   const [name, setName] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
@@ -963,7 +953,7 @@ function AddProviderDialog({
   // Default to the vendor's declared auth mode instead of hard-coding OAuth.
   const [authMode, setAuthMode] = useState<'oauth' | 'apikey'>('apikey');
 
-  const typeInfo = PROVIDER_TYPE_INFO.find((t) => t.id === selectedType) || (isHonoApiTemplate(selectedType) ? { id: 'custom', name: getHonoApiTemplateDefaults(selectedType).name, icon: 'H', placeholder: 'hk-...', model: 'GPT', requiresApiKey: true, showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'gpt-5.4', defaultModelId: 'gpt-5.4', apiKeyUrl: getHonoApiTemplateDefaults(selectedType).apiKeyUrl } : undefined);
+  const typeInfo = PROVIDER_TYPE_INFO.find((t) => t.id === selectedType);
   const providerDocsUrl = getProviderDocsUrl(typeInfo, i18n.language);
   const showModelIdField = shouldShowProviderModelId(typeInfo, devModeUnlocked);
   const codePlanPreset = typeInfo?.codePlanPresetBaseUrl && typeInfo?.codePlanPresetModelId
@@ -978,7 +968,7 @@ function AddProviderDialog({
   const isOAuth = typeInfo?.isOAuth ?? false;
   const supportsApiKey = typeInfo?.supportsApiKey ?? false;
   const vendorMap = new Map(vendors.map((vendor) => [vendor.id, vendor]));
-  const effectiveSelectedType = isHonoApiTemplate(selectedType) ? 'custom' : selectedType;
+  const effectiveSelectedType = selectedType;
   const selectedVendor = effectiveSelectedType ? vendorMap.get(effectiveSelectedType) : undefined;
   const showUserAgentInAddDialog = shouldShowUserAgentFieldForNewProvider(effectiveSelectedType);
   const preferredOAuthMode = selectedVendor?.supportedAuthModes.includes('oauth_browser')
@@ -1106,9 +1096,9 @@ function AddProviderDialog({
 
     try {
       const vendor = vendorMap.get(selectedType as ProviderType);
-      const supportsMultipleAccounts = vendor?.supportsMultipleAccounts ?? selectedType === 'custom';
+      const supportsMultipleAccounts = vendor?.supportsMultipleAccounts ?? isCustomLikeProviderType(selectedType);
       const accountId = supportsMultipleAccounts ? `${selectedType}-${crypto.randomUUID()}` : selectedType;
-      const label = name || (typeInfo?.id === 'custom' ? t('aiProviders.custom') : typeInfo?.name) || selectedType;
+      const label = name || typeInfo?.name || selectedType;
       pendingOAuthRef.current = { accountId, label };
       await hostApiFetch('/api/providers/oauth/start', {
         method: 'POST',
@@ -1190,10 +1180,10 @@ function AddProviderDialog({
         return;
       }
       if (requiresKey && apiKey) {
-        const effectiveType = isHonoApiTemplate(selectedType) ? 'custom' : selectedType;
+        const effectiveType = selectedType;
         const result = await onValidateKey(effectiveType, apiKey, {
           baseUrl: baseUrl.trim() || undefined,
-          apiProtocol: ((effectiveType === 'custom') || effectiveType === 'ollama') ? apiProtocol : undefined,
+          apiProtocol: (isProtocolSelectableProviderType(effectiveType) || effectiveType === 'ollama') ? apiProtocol : undefined,
         });
         if (!result.valid) {
           setValidationError(result.error || t('aiProviders.toast.invalidKey'));
@@ -1209,14 +1199,14 @@ function AddProviderDialog({
         return;
       }
 
-      const effectiveType = isHonoApiTemplate(selectedType) ? 'custom' : selectedType;
+      const effectiveType = selectedType;
       await onAdd(
         effectiveType,
-        name || (typeInfo?.id === 'custom' ? t('aiProviders.custom') : typeInfo?.name) || selectedType,
+        name || typeInfo?.name || selectedType,
         apiKey.trim(),
         {
           baseUrl: baseUrl.trim() || undefined,
-          apiProtocol: (effectiveType === 'custom' || effectiveType === 'ollama') ? apiProtocol : undefined,
+          apiProtocol: (isProtocolSelectableProviderType(effectiveType) || effectiveType === 'ollama') ? apiProtocol : undefined,
           headers: userAgent.trim() ? { 'User-Agent': userAgent.trim() } : undefined,
           model: resolveProviderModelForSave(typeInfo, modelId, devModeUnlocked),
           authMode: useOAuthFlow ? (preferredOAuthMode || 'oauth_device') : effectiveType === 'ollama'
@@ -1254,42 +1244,13 @@ function AddProviderDialog({
         <CardContent className="overflow-y-auto flex-1 p-6">
           {!selectedType ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {(['honoapi-template', 'honoapi-cn-template'] as const).map((templateId) => {
-                const preset = getHonoApiTemplateDefaults(templateId);
-                return (
-                  <button
-                    data-testid={`add-provider-type-${templateId}`}
-                    key={templateId}
-                    onClick={() => {
-                      setSelectedType(templateId);
-                      setName(preset.name);
-                      setBaseUrl(preset.baseUrl);
-                      setModelId(preset.modelId);
-                      setApiProtocol('openai-completions');
-                      setUserAgent('');
-                      setShowAdvancedConfig(false);
-                      setArkMode('apikey');
-                    }}
-                    className="p-4 rounded-2xl border border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-center group"
-                  >
-                    <div className="h-12 w-12 mx-auto mb-3 flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-xl shadow-sm border border-black/5 dark:border-white/5 group-hover:scale-105 transition-transform">
-                      {getProviderIconUrl('honoapi') ? (
-                        <img src={getProviderIconUrl('honoapi')} alt={preset.name} className="h-6 w-6 brightness-0 dark:brightness-0 dark:invert" />
-                      ) : (
-                        <span className="text-2xl">H</span>
-                      )}
-                    </div>
-                    <p className="font-medium text-[13px]">{preset.name}</p>
-                  </button>
-                );
-              })}
-              {availableTypes.map((type) => (
+                            {availableTypes.map((type) => (
                 <button
                   data-testid={`add-provider-type-${type.id}`}
                   key={type.id}
                   onClick={() => {
                     setSelectedType(type.id);
-                    setName(type.id === 'custom' ? t('aiProviders.custom') : type.name);
+                    setName(type.name);
                     setBaseUrl(type.defaultBaseUrl || '');
                     setModelId(type.defaultModelId || '');
                     setUserAgent('');
@@ -1305,7 +1266,7 @@ function AddProviderDialog({
                       <span className="text-2xl">{type.icon}</span>
                     )}
                   </div>
-                  <p className="font-medium text-[13px]">{type.id === 'custom' ? t('aiProviders.custom') : type.name}</p>
+                  <p className="font-medium text-[13px]">{type.name}</p>
                 </button>
               ))}
             </div>
@@ -1320,7 +1281,7 @@ function AddProviderDialog({
                   )}
                 </div>
                 <div>
-                  <p className="font-semibold text-[15px]">{typeInfo?.id === 'custom' ? t('aiProviders.custom') : typeInfo?.name}</p>
+                  <p className="font-semibold text-[15px]">{typeInfo?.name}</p>
                   <button
                   onClick={() => {
                     setSelectedType(null);
@@ -1374,7 +1335,7 @@ function AddProviderDialog({
                   <Input
                     data-testid="add-provider-name-input"
                     id="name"
-                    placeholder={typeInfo?.id === 'custom' ? t('aiProviders.custom') : typeInfo?.name}
+                    placeholder={typeInfo?.name}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className={inputClasses}
@@ -1534,7 +1495,7 @@ function AddProviderDialog({
                     )}
                   </div>
                 )}
-                {selectedType === 'custom' && (
+                {selectedType && isProtocolSelectableProviderType(selectedType) && (
                 <div className="space-y-2.5">
                   <Label className={labelClasses}>{t('aiProviders.dialog.protocol', 'Protocol')}</Label>
                   <div className="flex gap-2 text-[13px]">

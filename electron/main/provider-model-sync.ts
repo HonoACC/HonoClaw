@@ -25,7 +25,7 @@ export function buildNonOAuthAgentProviderUpdate(
   providerId: string,
   modelRef: string | undefined
 ): AgentProviderUpdatePayload | null {
-  if (provider.type === 'custom' || provider.type === 'ollama' || isOAuthProviderType(provider.type)) {
+  if (provider.type === 'custom' || provider.type === 'honoapi' || provider.type === 'honoapi-cn' || provider.type === 'ollama' || isOAuthProviderType(provider.type)) {
     return null;
   }
 

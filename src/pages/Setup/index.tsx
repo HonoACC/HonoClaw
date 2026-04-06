@@ -103,6 +103,7 @@ import {
   resolveProviderModelForSave,
   getProviderIconClass,
   shouldShowProviderModelId,
+  isProtocolSelectableProviderType,
 } from '@/lib/providers';
 import {
   buildProviderAccountId,
@@ -1042,7 +1043,7 @@ function ProviderContent({
           apiKey,
           {
             baseUrl: baseUrl.trim() || undefined,
-            apiProtocol: (selectedProvider === 'custom' || selectedProvider === 'ollama')
+            apiProtocol: ((selectedProvider && isProtocolSelectableProviderType(selectedProvider)) || selectedProvider === 'ollama')
               ? apiProtocol
               : undefined,
           }
@@ -1082,7 +1083,7 @@ function ProviderContent({
           ? 'local'
           : 'api_key',
         baseUrl: baseUrl.trim() || undefined,
-        apiProtocol: (selectedProvider === 'custom' || selectedProvider === 'ollama')
+        apiProtocol: ((selectedProvider && isProtocolSelectableProviderType(selectedProvider)) || selectedProvider === 'ollama')
           ? apiProtocol
           : undefined,
         model: effectiveModelId,
@@ -1153,6 +1154,7 @@ function ProviderContent({
 
   const handleSelectProvider = (providerId: string) => {
     onSelectProvider(providerId);
+    const provider = providers.find((candidate) => candidate.id === providerId);
     setSelectedAccountId(null);
     onConfiguredChange(false);
     onApiKeyChange('');
@@ -1160,6 +1162,9 @@ function ProviderContent({
     setProviderMenuOpen(false);
     setAuthMode('oauth');
     setArkMode('apikey');
+    setBaseUrl(provider?.defaultBaseUrl || '');
+    setModelId(provider?.defaultModelId || '');
+    setApiProtocol(isProtocolSelectableProviderType(providerId) ? 'openai-completions' : 'openai-completions');
   };
 
   return (
@@ -1226,7 +1231,7 @@ function ProviderContent({
               )}
               <span className={cn('truncate text-left', !selectedProvider && 'text-muted-foreground')}>
                 {selectedProviderData
-                  ? `${selectedProviderData.id === 'custom' ? t('settings:aiProviders.custom') : selectedProviderData.name}${selectedProviderData.model ? ` — ${selectedProviderData.model}` : ''}`
+                  ? `${selectedProviderData.name}${selectedProviderData.model ? ` — ${selectedProviderData.model}` : ''}`
                   : t('provider.selectPlaceholder')}
               </span>
             </div>
@@ -1265,7 +1270,7 @@ function ProviderContent({
                       ) : (
                         <span className="text-sm leading-none shrink-0">{p.icon}</span>
                       )}
-                      <span className="truncate">{p.id === 'custom' ? t('settings:aiProviders.custom') : p.name}{p.model ? ` — ${p.model}` : ''}</span>
+                      <span className="truncate">{p.name}{p.model ? ` — ${p.model}` : ''}</span>
                     </div>
                     {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
                   </button>
@@ -1387,7 +1392,7 @@ function ProviderContent({
             </div>
           )}
 
-          {selectedProvider === 'custom' && (
+          {selectedProvider && isProtocolSelectableProviderType(selectedProvider) && (
             <div className="space-y-2">
               <Label>{t('provider.protocol')}</Label>
               <div className="flex gap-2 text-sm">
@@ -1860,7 +1865,7 @@ function CompleteContent({ selectedProvider, installedSkills }: CompleteContentP
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
           <span>{t('complete.provider')}</span>
           <span className="text-green-400">
-            {providerData ? <span className="flex items-center gap-1.5">{getProviderIconUrl(providerData.id) ? <img src={getProviderIconUrl(providerData.id)} alt={providerData.name} className={`h-4 w-4 inline-block ${getProviderIconClass(providerData.id)}`} /> : providerData.icon} {providerData.id === 'custom' ? t('settings:aiProviders.custom') : providerData.name}</span> : '—'}
+            {providerData ? <span className="flex items-center gap-1.5">{getProviderIconUrl(providerData.id) ? <img src={getProviderIconUrl(providerData.id)} alt={providerData.name} className={`h-4 w-4 inline-block ${getProviderIconClass(providerData.id)}`} /> : providerData.icon} {providerData.name}</span> : '—'}
           </span>
         </div>
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">

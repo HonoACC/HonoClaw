@@ -18,6 +18,8 @@ export const PROVIDER_TYPES = [
   'minimax-portal-cn',
   'modelstudio',
   'ollama',
+  'honoapi',
+  'honoapi-cn',
   'custom',
 ] as const;
 export type ProviderType = (typeof PROVIDER_TYPES)[number];
@@ -34,6 +36,8 @@ export const BUILTIN_PROVIDER_TYPES = [
   'minimax-portal-cn',
   'modelstudio',
   'ollama',
+  'honoapi',
+  'honoapi-cn',
 ] as const;
 
 export const OLLAMA_PLACEHOLDER_API_KEY = 'ollama-local';
@@ -178,6 +182,36 @@ export const PROVIDER_TYPE_INFO: ProviderTypeInfo[] = [
   { id: 'ark', name: 'ByteDance Ark', icon: 'A', placeholder: 'your-ark-api-key', model: 'Doubao', requiresApiKey: true, defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'ep-20260228000000-xxxxx', docsUrl: 'https://www.volcengine.com/', codePlanPresetBaseUrl: 'https://ark.cn-beijing.volces.com/api/coding/v3', codePlanPresetModelId: 'ark-code-latest', codePlanDocsUrl: 'https://www.volcengine.com/docs/82379/1928261?lang=zh' },
   { id: 'ollama', name: 'Ollama', icon: '🦙', placeholder: 'Not required', requiresApiKey: false, defaultBaseUrl: 'http://localhost:11434/v1', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'qwen3:latest' },
   {
+    id: 'honoapi',
+    name: 'HonoAPI',
+    icon: 'H',
+    placeholder: 'hk-...',
+    model: 'GPT',
+    requiresApiKey: true,
+    defaultBaseUrl: 'https://api.honoacc.com',
+    showBaseUrl: true,
+    showModelId: true,
+    modelIdPlaceholder: 'gpt-5.4',
+    defaultModelId: 'gpt-5.4',
+    apiKeyUrl: 'https://api.honoacc.com/',
+    docsUrl: 'https://api.honoacc.com/',
+  },
+  {
+    id: 'honoapi-cn',
+    name: 'HonoAPI-cn',
+    icon: 'H',
+    placeholder: 'hk-...',
+    model: 'GPT',
+    requiresApiKey: true,
+    defaultBaseUrl: 'https://cn-api.honoacc.com',
+    showBaseUrl: true,
+    showModelId: true,
+    modelIdPlaceholder: 'gpt-5.4',
+    defaultModelId: 'gpt-5.4',
+    apiKeyUrl: 'https://cn-api.honoacc.com/',
+    docsUrl: 'https://cn-api.honoacc.com/',
+  },
+  {
     id: 'custom',
     name: 'Custom',
     icon: '⚙️',
@@ -195,6 +229,14 @@ export function getProviderIconUrl(type: ProviderType | string): string | undefi
   return providerIcons[type];
 }
 
+export function isCustomLikeProviderType(type: ProviderType | string): boolean {
+  return type === 'custom' || type === 'honoapi' || type === 'honoapi-cn';
+}
+
+export function isProtocolSelectableProviderType(type: ProviderType | string): boolean {
+  return isCustomLikeProviderType(type);
+}
+
 export function shouldInvertInDark(_type: ProviderType | string): boolean {
   return true;
 }
@@ -203,7 +245,17 @@ export function getProviderIconClass(type: ProviderType | string): string {
   return shouldInvertInDark(type) ? 'dark:invert' : '';
 }
 
-export const SETUP_PROVIDERS = PROVIDER_TYPE_INFO;
+export const SETUP_PROVIDERS = [...PROVIDER_TYPE_INFO].sort((left, right) => {
+  const priority = (id: ProviderType): number => {
+    if (id === 'honoapi') return 0;
+    if (id === 'honoapi-cn') return 1;
+    if (id === 'custom') return 999;
+    return 100;
+  };
+  const delta = priority(left.id) - priority(right.id);
+  if (delta !== 0) return delta;
+  return left.name.localeCompare(right.name);
+});
 
 export function getProviderTypeInfo(type: ProviderType): ProviderTypeInfo | undefined {
   return PROVIDER_TYPE_INFO.find((t) => t.id === type);

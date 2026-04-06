@@ -59,7 +59,7 @@ function resolveRuntimeProviderKey(account: ProviderAccount): string {
     if (account.vendorId === 'openai') return 'openai-codex';
   }
 
-  if (account.vendorId === 'custom' || account.vendorId === 'ollama') {
+  if (account.vendorId === 'custom' || account.vendorId === 'honoapi' || account.vendorId === 'honoapi-cn' || account.vendorId === 'ollama') {
     const suffix = account.id.replace(/-/g, '').slice(0, 8);
     return `${account.vendorId}-${suffix}`;
   }

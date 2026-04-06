@@ -122,6 +122,11 @@
       "step2": "ブラウザでログインページを開いてください。",
       "step3": "コードを貼り付けてアクセスを承認してください。",
       "requestingCode": "セキュアログインコードを取得中..."
+    },
+    "honoapi": {
+      "title": "HonoAPI",
+      "description": "OpenAI 互換設定を編集できるプリセット HonoAPI プロバイダーです。",
+      "descriptionCn": "OpenAI 互換設定を編集できる中国向けプリセット HonoAPI プロバイダーです。"
     }
   },
   "gateway": {

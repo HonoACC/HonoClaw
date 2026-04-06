@@ -28,7 +28,7 @@ const OPENAI_OAUTH_DEFAULT_MODEL_REF = `${OPENAI_OAUTH_RUNTIME_PROVIDER}/gpt-5.4
  * They require explicit api-protocol defaulting to `openai-completions`.
  */
 function isUnregisteredProviderType(type: string): boolean {
-  return type === 'custom' || type === 'ollama';
+  return type === 'custom' || type === 'honoapi' || type === 'honoapi-cn' || type === 'ollama';
 }
 
 type RuntimeProviderSyncContext = {

@@ -26,7 +26,7 @@ export function providerConfigToAccount(
     label: config.name,
     authMode: inferAuthMode(config.type),
     baseUrl: config.baseUrl,
-    apiProtocol: config.apiProtocol || (config.type === 'custom' || config.type === 'ollama'
+    apiProtocol: config.apiProtocol || (config.type === 'custom' || config.type === 'honoapi' || config.type === 'honoapi-cn' || config.type === 'ollama'
       ? 'openai-completions'
       : getProviderDefinition(config.type)?.providerConfig?.api),
     headers: config.headers,

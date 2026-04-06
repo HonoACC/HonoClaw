@@ -6,6 +6,9 @@ import {
   resolveProviderApiKeyForSave,
   resolveProviderModelForSave,
   shouldShowProviderModelId,
+  isCustomLikeProviderType,
+  isProtocolSelectableProviderType,
+  SETUP_PROVIDERS,
 } from '@/lib/providers';
 import {
   BUILTIN_PROVIDER_TYPES,
@@ -33,6 +36,49 @@ describe('provider metadata', () => {
         }),
       ])
     );
+  });
+
+
+
+  it('promotes HonoAPI providers to first-class provider types', () => {
+    expect(PROVIDER_TYPES).toEqual(expect.arrayContaining(['honoapi', 'honoapi-cn']));
+    expect(BUILTIN_PROVIDER_TYPES).toEqual(expect.arrayContaining(['honoapi', 'honoapi-cn']));
+
+    const honoapi = PROVIDER_TYPE_INFO.find((provider) => provider.id === 'honoapi');
+    const honoapiCn = PROVIDER_TYPE_INFO.find((provider) => provider.id === 'honoapi-cn');
+
+    expect(honoapi).toMatchObject({
+      name: 'HonoAPI',
+      defaultBaseUrl: 'https://api.honoacc.com',
+      defaultModelId: 'gpt-5.4',
+      showBaseUrl: true,
+      showModelId: true,
+    });
+    expect(honoapiCn).toMatchObject({
+      name: 'HonoAPI-cn',
+      defaultBaseUrl: 'https://cn-api.honoacc.com',
+      defaultModelId: 'gpt-5.4',
+      showBaseUrl: true,
+      showModelId: true,
+    });
+
+    expect(getProviderEnvVar('honoapi')).toBe('HONOAPI_API_KEY');
+    expect(getProviderEnvVar('honoapi-cn')).toBe('HONOAPI_CN_API_KEY');
+    expect(getProviderConfig('honoapi')).toBeUndefined();
+    expect(getProviderConfig('honoapi-cn')).toBeUndefined();
+  });
+
+  it('treats HonoAPI providers as custom-like protocol-selectable providers', () => {
+    expect(isCustomLikeProviderType('honoapi')).toBe(true);
+    expect(isCustomLikeProviderType('honoapi-cn')).toBe(true);
+    expect(isProtocolSelectableProviderType('honoapi')).toBe(true);
+    expect(isProtocolSelectableProviderType('honoapi-cn')).toBe(true);
+    expect(isProtocolSelectableProviderType('openai')).toBe(false);
+  });
+
+  it('sorts HonoAPI providers to the front of setup provider list', () => {
+    expect(SETUP_PROVIDERS[0]?.id).toBe('honoapi');
+    expect(SETUP_PROVIDERS[1]?.id).toBe('honoapi-cn');
   });
 
   it('includes ark in the backend provider registry', () => {
