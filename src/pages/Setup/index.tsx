@@ -1183,16 +1183,34 @@ function ProviderContent({
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <Label>{t('provider.label')}</Label>
-          {selectedProvider && effectiveProviderDocsUrl && (
-            <a
-              href={effectiveProviderDocsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[13px] text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
-            >
-              {t('settings:aiProviders.dialog.customDoc')}
-              <ExternalLink className="h-3 w-3" />
-            </a>
+          {selectedProvider && (effectiveProviderDocsUrl || selectedProviderData?.apiKeyUrl) && (
+            <div className="flex items-center gap-2 text-[13px]">
+              {effectiveProviderDocsUrl && (
+                <a
+                  href={effectiveProviderDocsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
+                >
+                  {t('settings:aiProviders.dialog.customDoc')}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              {effectiveProviderDocsUrl && selectedProviderData?.apiKeyUrl && (
+                <span className="text-foreground/30">|</span>
+              )}
+              {selectedProviderData?.apiKeyUrl && (
+                <a
+                  href={selectedProviderData.apiKeyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
+                >
+                  {t('settings:aiProviders.oauth.getApiKey')}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
           )}
         </div>
         <div className="relative" ref={providerMenuRef}>
