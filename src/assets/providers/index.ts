@@ -9,6 +9,7 @@ import minimaxPortal from './minimax.svg';
 import qwenPortal from './qwen.svg';
 import ollama from './ollama.svg';
 import custom from './custom.svg';
+import honoapi from './honoapi.svg';
 
 export const providerIcons: Record<string, string> = {
     anthropic,
@@ -20,6 +21,8 @@ export const providerIcons: Record<string, string> = {
     siliconflow,
     'minimax-portal': minimaxPortal,
     'minimax-portal-cn': minimaxPortal,
+    honoapi,
+    'honoapi-cn': honoapi,
     'modelstudio': qwenPortal,
     ollama,
     custom,

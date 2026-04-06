@@ -8,6 +8,8 @@ export const PROVIDER_TYPES = [
   'siliconflow',
   'minimax-portal',
   'minimax-portal-cn',
+  'honoapi',
+  'honoapi-cn',
   'modelstudio',
   'ollama',
   'custom',
@@ -23,6 +25,8 @@ export const BUILTIN_PROVIDER_TYPES = [
   'siliconflow',
   'minimax-portal',
   'minimax-portal-cn',
+  'honoapi',
+  'honoapi-cn',
   'modelstudio',
   'ollama',
 ] as const;

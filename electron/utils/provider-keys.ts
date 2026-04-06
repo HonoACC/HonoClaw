@@ -12,12 +12,11 @@ const OPENCLAW_OAUTH_PLUGIN_PROVIDER_KEY_SET = new Set<string>(OPENCLAW_OAUTH_PL
 
 const PROVIDER_KEY_ALIASES: Record<string, string> = {
   'minimax-portal-cn': OPENCLAW_PROVIDER_KEY_MINIMAX,
+  'honoapi-cn': 'honoapi',
 };
 
 export function getOpenClawProviderKeyForType(type: string, providerId: string): string {
   if (MULTI_INSTANCE_PROVIDER_TYPES.has(type)) {
-    // If the providerId is already a runtime key (e.g. re-seeded from openclaw.json
-    // as "custom-XXXXXXXX"), return it directly to avoid double-hashing.
     const prefix = `${type}-`;
     if (providerId.startsWith(prefix)) {
       const tail = providerId.slice(prefix.length);
@@ -32,10 +31,6 @@ export function getOpenClawProviderKeyForType(type: string, providerId: string):
   return PROVIDER_KEY_ALIASES[type] ?? type;
 }
 
-/**
- * Get all vendorId values that map to the given openclaw.json key via alias.
- * e.g. getAliasSourceTypes('minimax-portal') → ['minimax-portal-cn']
- */
 export function getAliasSourceTypes(openClawKey: string): string[] {
   return Object.entries(PROVIDER_KEY_ALIASES)
     .filter(([, target]) => target === openClawKey)

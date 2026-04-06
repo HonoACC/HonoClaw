@@ -16,6 +16,8 @@ export const PROVIDER_TYPES = [
   'siliconflow',
   'minimax-portal',
   'minimax-portal-cn',
+  'honoapi',
+  'honoapi-cn',
   'modelstudio',
   'ollama',
   'custom',
@@ -32,6 +34,8 @@ export const BUILTIN_PROVIDER_TYPES = [
   'siliconflow',
   'minimax-portal',
   'minimax-portal-cn',
+  'honoapi',
+  'honoapi-cn',
   'modelstudio',
   'ollama',
 ] as const;
@@ -174,6 +178,8 @@ export const PROVIDER_TYPE_INFO: ProviderTypeInfo[] = [
   { id: 'moonshot', name: 'Moonshot (CN)', icon: '🌙', placeholder: 'sk-...', model: 'Kimi', requiresApiKey: true, defaultBaseUrl: 'https://api.moonshot.cn/v1', defaultModelId: 'kimi-k2.5', docsUrl: 'https://platform.moonshot.cn/' },
   { id: 'siliconflow', name: 'SiliconFlow (CN)', icon: '🌊', placeholder: 'sk-...', model: 'Multi-Model', requiresApiKey: true, defaultBaseUrl: 'https://api.siliconflow.cn/v1', showModelId: true, showModelIdInDevModeOnly: true, modelIdPlaceholder: 'deepseek-ai/DeepSeek-V3', defaultModelId: 'deepseek-ai/DeepSeek-V3', docsUrl: 'https://docs.siliconflow.cn/cn/userguide/introduction' },
   { id: 'minimax-portal', name: 'MiniMax (Global)', icon: '☁️', placeholder: 'sk-...', model: 'MiniMax', requiresApiKey: false, isOAuth: true, supportsApiKey: true, defaultModelId: 'MiniMax-M2.7', showModelId: true, showModelIdInDevModeOnly: true, modelIdPlaceholder: 'MiniMax-M2.7', apiKeyUrl: 'https://platform.minimax.io' },
+  { id: 'honoapi', name: 'HonoAPI', icon: 'H', placeholder: 'hk-...', model: 'GPT', requiresApiKey: true, defaultBaseUrl: 'http://api.honoacc.com', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'gpt-5.4', defaultModelId: 'gpt-5.4' },
+  { id: 'honoapi-cn', name: 'HonoAPI-cn', icon: 'H', placeholder: 'hk-...', model: 'GPT', requiresApiKey: true, defaultBaseUrl: 'http://cn-api.honoacc.com', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'gpt-5.4', defaultModelId: 'gpt-5.4' },
   { id: 'modelstudio', name: 'Model Studio', icon: '☁️', placeholder: 'sk-...', model: 'Qwen', requiresApiKey: true, defaultBaseUrl: 'https://coding.dashscope.aliyuncs.com/v1', showBaseUrl: true, defaultModelId: 'qwen3.5-plus', showModelId: true, showModelIdInDevModeOnly: true, modelIdPlaceholder: 'qwen3.5-plus', apiKeyUrl: 'https://bailian.console.aliyun.com/', hidden: true },
   { id: 'ark', name: 'ByteDance Ark', icon: 'A', placeholder: 'your-ark-api-key', model: 'Doubao', requiresApiKey: true, defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'ep-20260228000000-xxxxx', docsUrl: 'https://www.volcengine.com/', codePlanPresetBaseUrl: 'https://ark.cn-beijing.volces.com/api/coding/v3', codePlanPresetModelId: 'ark-code-latest', codePlanDocsUrl: 'https://www.volcengine.com/docs/82379/1928261?lang=zh' },
   { id: 'ollama', name: 'Ollama', icon: '🦙', placeholder: 'Not required', requiresApiKey: false, defaultBaseUrl: 'http://localhost:11434/v1', showBaseUrl: true, showModelId: true, modelIdPlaceholder: 'qwen3:latest' },
@@ -191,20 +197,16 @@ export const PROVIDER_TYPE_INFO: ProviderTypeInfo[] = [
   },
 ];
 
-/** Get the SVG logo URL for a provider type, falls back to undefined */
 export function getProviderIconUrl(type: ProviderType | string): string | undefined {
   return providerIcons[type];
 }
 
-/** Whether a provider's logo needs CSS invert in dark mode (all logos are monochrome) */
 export function shouldInvertInDark(_type: ProviderType | string): boolean {
   return true;
 }
 
-/** Provider list shown in the Setup wizard */
 export const SETUP_PROVIDERS = PROVIDER_TYPE_INFO;
 
-/** Get type info by provider type id */
 export function getProviderTypeInfo(type: ProviderType): ProviderTypeInfo | undefined {
   return PROVIDER_TYPE_INFO.find((t) => t.id === type);
 }
@@ -246,7 +248,6 @@ export function resolveProviderModelForSave(
   return trimmedModelId || provider?.defaultModelId || undefined;
 }
 
-/** Normalize provider API key before saving; Ollama uses a local placeholder when blank. */
 export function resolveProviderApiKeyForSave(type: ProviderType | string, apiKey: string): string | undefined {
   const trimmed = apiKey.trim();
   if (type === 'ollama') {

@@ -124,6 +124,19 @@ function getProtocolBaseUrlPlaceholder(
   return 'https://api.example.com/v1';
 }
 
+function detectHonoApiRegion(): 'cn' | 'global' {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    return timezone === 'Asia/Shanghai' ? 'cn' : 'global';
+  } catch {
+    return 'global';
+  }
+}
+
+function getDefaultHonoApiProviderId(): 'honoapi' | 'honoapi-cn' {
+  return detectHonoApiRegion() === 'cn' ? 'honoapi-cn' : 'honoapi';
+}
+
 // NOTE: Channel types moved to Settings > Channels page
 // NOTE: Skill bundles moved to Settings > Skills page - auto-install essential skills during setup
 
@@ -900,6 +913,9 @@ function ProviderContent({
           )).apiKey;
           onApiKeyChange(storedKey || '');
         } else if (!cancelled) {
+          const fallbackProviderId = getDefaultHonoApiProviderId();
+          onSelectProvider(fallbackProviderId);
+          setSelectedAccountId(null);
           onConfiguredChange(false);
           onApiKeyChange('');
         }
