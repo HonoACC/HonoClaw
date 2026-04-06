@@ -1134,11 +1134,8 @@ function AddProviderDialog({
   };
 
   const availableTypes = PROVIDER_TYPE_INFO.filter((type) => {
-    // Skip providers that are temporarily hidden from the UI.
     if (type.hidden) return false;
 
-    // MiniMax portal variants are mutually exclusive — hide BOTH variants
-    // when either one already exists (account may have vendorId of either variant).
     const hasMinimax = existingVendorIds.has('minimax-portal') || existingVendorIds.has('minimax-portal-cn');
     if ((type.id === 'minimax-portal' || type.id === 'minimax-portal-cn') && hasMinimax) return false;
 
@@ -1147,6 +1144,15 @@ function AddProviderDialog({
       return !existingVendorIds.has(type.id) || type.id === 'custom';
     }
     return vendor.supportsMultipleAccounts || !existingVendorIds.has(type.id);
+  }).sort((left, right) => {
+    const priority = (id: string): number => {
+      if (id === 'honoapi') return 0;
+      if (id === 'honoapi-cn') return 1;
+      return 100;
+    };
+    const delta = priority(left.id) - priority(right.id);
+    if (delta !== 0) return delta;
+    return left.name.localeCompare(right.name);
   });
 
   const handleAdd = async () => {
