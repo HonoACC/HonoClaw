@@ -113,7 +113,7 @@
     },
     "complete": {
         "title": "セットアップ完了！",
-        "subtitle": "HonoClawの構成が完了し、使用準備が整いました。AIアシスタントとのチャットを開始できます。"
+        "subtitle": "HonoClawの構成が完了し、使用準備が整いました。AIアシスタントとのチャットを開始できます。",
         "provider": "AI プロバイダー",
         "components": "コンポーネント",
         "gateway": "ゲートウェイ",
