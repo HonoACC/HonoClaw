@@ -21,7 +21,7 @@
         "eyebrow": "Run View",
         "title": "Task Outline",
         "emptyTitle": "No structured steps yet",
-        "emptyBody": "Once a run starts, ClawX will surface thinking, tool calls, and handoff states here.",
+        "emptyBody": "Once a run starts, HonoClaw will surface thinking, tool calls, and handoff states here.",
         "status": {
             "idle": "Idle",
             "running_one": "1 active step",

@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="#功能特性">功能特性</a> •
-  <a href="#为什么选择-clawx">为什么选择 HonoClaw</a> •
+  <a href="#为什么选择-honoclaw">为什么选择 HonoClaw</a> •
   <a href="#快速上手">快速上手</a> •
   <a href="#系统架构">系统架构</a> •
   <a href="#开发指南">开发指南</a> •
@@ -452,5 +452,5 @@ HonoClaw 基于 [MIT 许可证](LICENSE) 发布。你可以自由地使用、修
 ---
 
 <p align="center">
-  <sub>由 ValueCell 团队用 ❤️ 打造</sub>
+  <sub>由 HonoACC 团队用 ❤️ 打造</sub>
 </p>

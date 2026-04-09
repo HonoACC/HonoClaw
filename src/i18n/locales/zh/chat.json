@@ -21,7 +21,7 @@
         "eyebrow": "运行视图",
         "title": "任务脉络",
         "emptyTitle": "还没有结构化步骤",
-        "emptyBody": "当一次运行开始后，ClawX 会在这里展示思考、工具调用和收尾状态。",
+        "emptyBody": "当一次运行开始后，HonoClaw 会在这里展示思考、工具调用和收尾状态。",
         "status": {
             "idle": "空闲",
             "running_one": "1 个活动步骤",
