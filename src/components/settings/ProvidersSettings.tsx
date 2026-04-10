@@ -34,6 +34,7 @@ import {
   getProviderDocsUrl,
   type ProviderType,
   getProviderIconUrl,
+  normalizeProviderApiKeyInput,
   resolveProviderApiKeyForSave,
   resolveProviderModelForSave,
   shouldShowProviderModelId,
@@ -426,10 +427,11 @@ function ProviderCard({
     try {
       const payload: { newApiKey?: string; updates?: Partial<ProviderConfig> } = {};
       const normalizedFallbackModels = normalizeFallbackModels(fallbackModelsText.split('\n'));
+      const normalizedNewKey = normalizeProviderApiKeyInput(newKey);
 
-      if (newKey.trim()) {
+      if (normalizedNewKey) {
         setValidating(true);
-        const result = await onValidateKey(newKey, {
+        const result = await onValidateKey(normalizedNewKey, {
           baseUrl: baseUrl.trim() || undefined,
           apiProtocol: (isProtocolSelectableProviderType(account.vendorId) || account.vendorId === 'ollama') ? apiProtocol : undefined,
         });
@@ -439,7 +441,7 @@ function ProviderCard({
           setSaving(false);
           return;
         }
-        payload.newApiKey = newKey.trim();
+        payload.newApiKey = normalizedNewKey;
       }
 
       {
@@ -1174,14 +1176,15 @@ function AddProviderDialog({
     try {
       // Validate key first if the provider requires one and a key was entered
       const requiresKey = typeInfo?.requiresApiKey ?? false;
-      if (requiresKey && !apiKey.trim()) {
+      const normalizedApiKey = normalizeProviderApiKeyInput(apiKey);
+      if (requiresKey && !normalizedApiKey) {
         setValidationError(t('aiProviders.toast.invalidKey')); // reusing invalid key msg or should add 'required' msg? null checks
         setSaving(false);
         return;
       }
-      if (requiresKey && apiKey) {
+      if (requiresKey && normalizedApiKey) {
         const effectiveType = selectedType;
-        const result = await onValidateKey(effectiveType, apiKey, {
+        const result = await onValidateKey(effectiveType, normalizedApiKey, {
           baseUrl: baseUrl.trim() || undefined,
           apiProtocol: (isProtocolSelectableProviderType(effectiveType) || effectiveType === 'ollama') ? apiProtocol : undefined,
         });
@@ -1202,8 +1205,8 @@ function AddProviderDialog({
       const effectiveType = selectedType;
       await onAdd(
         effectiveType,
-        name || typeInfo?.name || selectedType,
-        apiKey.trim(),
+        name || (typeInfo?.id === 'custom' ? t('aiProviders.custom') : typeInfo?.name) || selectedType,
+        normalizedApiKey,
         {
           baseUrl: baseUrl.trim() || undefined,
           apiProtocol: (isProtocolSelectableProviderType(effectiveType) || effectiveType === 'ollama') ? apiProtocol : undefined,
@@ -1683,6 +1686,7 @@ function AddProviderDialog({
 
               <div className="flex justify-end gap-3">
                 <Button
+                  data-testid="add-provider-submit-button"
                   onClick={handleAdd}
                   className={cn("rounded-full px-8 h-[42px] text-[13px] font-semibold bg-[#0a84ff] hover:bg-[#007aff] text-white shadow-sm", useOAuthFlow && "hidden")}
                   disabled={!selectedType || saving || (showModelIdField && modelId.trim().length === 0)}
