@@ -957,12 +957,42 @@ function upsertToolStatuses(current: ToolStatus[], updates: ToolStatus[]): ToolS
 }
 
 /**
- * Only treat an explicit chat.send ack timeout as recoverable.
- * Gateway stopped / Gateway not connected are hard failures that
- * should still terminate the send immediately.
+ * Some Gateway runs may outlive the initial chat.send RPC timeout.
+ * However, we should only keep waiting when we have evidence the run
+ * actually started (run events / streaming / pending final state).
+ *
+ * If no run evidence exists, treating the timeout as recoverable leaves
+ * the UI stuck in sending state forever while the backend eventually
+ * cancels the context (client_gone / context canceled).
  */
-function isRecoverableChatSendTimeout(error: string): boolean {
-  return error.includes('RPC timeout: chat.send');
+function isRecoverableChatSendTimeout(
+  error: string,
+  options: {
+    sendStartedAt: number;
+    activeRunId: string | null;
+    streamingMessage: RawMessage | null;
+    streamingText: string;
+    pendingFinal: boolean;
+  },
+): boolean {
+  if (!error.includes('RPC timeout: chat.send')) return false;
+
+  const sawGatewayProgress = _lastChatEventAt > options.sendStartedAt;
+  return Boolean(
+    sawGatewayProgress
+      || options.activeRunId
+      || options.streamingMessage
+      || options.streamingText
+      || options.pendingFinal,
+  );
+}
+
+function isTerminalChatFailure(error: string): boolean {
+  const normalized = error.toLowerCase();
+  return normalized.includes('client_gone')
+    || normalized.includes('context canceled')
+    || normalized.includes('gateway not connected')
+    || normalized.includes('failed to send rpc request');
 }
 
 function collectToolUpdates(message: unknown, eventState: string): ToolStatus[] {
@@ -1622,6 +1652,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
     setTimeout(checkStuck, 30_000);
 
+    const sendStartedAt = Date.now();
     try {
       const idempotencyKey = crypto.randomUUID();
       const hasMedia = attachments && attachments.length > 0;
@@ -1685,24 +1716,46 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       if (!result.success) {
         const errorMsg = result.error || 'Failed to send message';
-        if (isRecoverableChatSendTimeout(errorMsg)) {
-          console.warn(`[sendMessage] Recoverable chat.send timeout, keeping poll alive: ${errorMsg}`);
+        const state = get();
+        if (
+          !isTerminalChatFailure(errorMsg)
+          && isRecoverableChatSendTimeout(errorMsg, {
+            sendStartedAt,
+            activeRunId: state.activeRunId,
+            streamingMessage: state.streamingMessage as RawMessage | null,
+            streamingText: state.streamingText,
+            pendingFinal: state.pendingFinal,
+          })
+        ) {
+          console.warn(`[sendMessage] Recoverable chat.send timeout after run activity, keeping poll alive: ${errorMsg}`);
           set({ error: errorMsg });
         } else {
           clearHistoryPoll();
-          set({ error: errorMsg, sending: false });
+          clearErrorRecoveryTimer();
+          set({ error: errorMsg, sending: false, activeRunId: null, lastUserMessageAt: null });
         }
       } else if (result.result?.runId) {
         set({ activeRunId: result.result.runId });
       }
     } catch (err) {
       const errStr = String(err);
-      if (isRecoverableChatSendTimeout(errStr)) {
-        console.warn(`[sendMessage] Recoverable chat.send timeout, keeping poll alive: ${errStr}`);
+      const state = get();
+      if (
+        !isTerminalChatFailure(errStr)
+        && isRecoverableChatSendTimeout(errStr, {
+          sendStartedAt,
+          activeRunId: state.activeRunId,
+          streamingMessage: state.streamingMessage as RawMessage | null,
+          streamingText: state.streamingText,
+          pendingFinal: state.pendingFinal,
+        })
+      ) {
+        console.warn(`[sendMessage] Recoverable chat.send timeout after run activity, keeping poll alive: ${errStr}`);
         set({ error: errStr });
       } else {
         clearHistoryPoll();
-        set({ error: errStr, sending: false });
+        clearErrorRecoveryTimer();
+        set({ error: errStr, sending: false, activeRunId: null, lastUserMessageAt: null });
       }
     }
   },
@@ -1945,6 +1998,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       case 'error': {
         const errorMsg = String(event.errorMessage || 'An error occurred');
         const wasSending = get().sending;
+        const shouldFinalizeImmediately = isTerminalChatFailure(errorMsg);
 
         // Snapshot the current streaming message into messages[] so partial
         // content ("Let me get that written down...") is preserved in the UI
@@ -1970,11 +2024,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
           pendingToolImages: [],
         });
 
-        // Don't immediately give up: the Gateway often retries internally
-        // after transient API failures (e.g. "terminated"). Keep `sending`
-        // true for a grace period so that recovery events are processed and
-        // the agent-phase-completion handler can still trigger loadHistory.
-        if (wasSending) {
+        // Don't immediately give up for transient mid-stream runtime errors.
+        // But terminal transport/context failures must end the send right away
+        // or the UI remains stuck forever.
+        if (wasSending && !shouldFinalizeImmediately) {
           clearErrorRecoveryTimer();
           const ERROR_RECOVERY_GRACE_MS = 15_000;
           _errorRecoveryTimer = setTimeout(() => {
@@ -1995,6 +2048,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }, ERROR_RECOVERY_GRACE_MS);
         } else {
           clearHistoryPoll();
+          clearErrorRecoveryTimer();
           set({ sending: false, activeRunId: null, lastUserMessageAt: null });
         }
         break;
