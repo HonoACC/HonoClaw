@@ -63,37 +63,70 @@ jobs:
 
       - name: Normalize mac update metadata
         run: |
-          python3 scripts/normalize-latest-mac-yml.py "staging/${CHANNEL}/latest-mac.yml"
+          if [ -f "staging/${CHANNEL}/latest-mac.yml" ]; then
+            python3 scripts/normalize-latest-mac-yml.py "staging/${CHANNEL}/latest-mac.yml"
+          else
+            echo "latest-mac.yml not found, skipping mac metadata normalization"
+          fi
 
       - name: Generate release-info.json
         run: |
           BASE_URL="https://clawdownload.honoacc.com/${CHANNEL}"
           TAG="v${VERSION}"
+          STAGING_DIR="staging/${CHANNEL}"
 
           jq -n \
             --arg version "$VERSION" \
             --arg channel "$CHANNEL" \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg base "$BASE_URL" \
             --arg changelog "https://github.com/${{ github.repository }}/releases/tag/${TAG}" \
             '{
               version: $version,
               channel: $channel,
               releaseDate: $date,
-              downloads: {
-                mac: {
-                  x64: ($base + "/HonoClaw-" + $version + "-mac-x64.dmg"),
-                  arm64: ($base + "/HonoClaw-" + $version + "-mac-arm64.dmg")
-                },
-                win: {
-                  x64: ($base + "/HonoClaw-" + $version + "-win-x64.exe")
-                }
-              },
+              downloads: {},
               changelog: $changelog
-            }' > staging/${CHANNEL}/release-info.json
+            }' > "$STAGING_DIR/release-info.json"
+
+          if ls "$STAGING_DIR"/HonoClaw-"$VERSION"-win-*.exe >/dev/null 2>&1; then
+            jq --arg url "$BASE_URL/HonoClaw-$VERSION-win-x64.exe" \
+              '.downloads.win = { x64: $url }' \
+              "$STAGING_DIR/release-info.json" > "$STAGING_DIR/release-info.tmp" \
+              && mv "$STAGING_DIR/release-info.tmp" "$STAGING_DIR/release-info.json"
+          fi
+
+          MAC_X64=""
+          MAC_ARM64=""
+          [ -f "$STAGING_DIR/HonoClaw-$VERSION-mac-x64.dmg" ] && MAC_X64="$BASE_URL/HonoClaw-$VERSION-mac-x64.dmg"
+          [ -f "$STAGING_DIR/HonoClaw-$VERSION-mac-arm64.dmg" ] && MAC_ARM64="$BASE_URL/HonoClaw-$VERSION-mac-arm64.dmg"
+          if [ -n "$MAC_X64" ] || [ -n "$MAC_ARM64" ]; then
+            jq \
+              --arg x64 "$MAC_X64" \
+              --arg arm64 "$MAC_ARM64" \
+              '.downloads.mac = ({}
+                + (if $x64 != "" then { x64: $x64 } else {} end)
+                + (if $arm64 != "" then { arm64: $arm64 } else {} end))' \
+              "$STAGING_DIR/release-info.json" > "$STAGING_DIR/release-info.tmp" \
+              && mv "$STAGING_DIR/release-info.tmp" "$STAGING_DIR/release-info.json"
+          fi
+
+          LINUX_X64=""
+          LINUX_ARM64=""
+          [ -f "$STAGING_DIR/HonoClaw-$VERSION-linux-amd64.AppImage" ] && LINUX_X64="$BASE_URL/HonoClaw-$VERSION-linux-amd64.AppImage"
+          [ -f "$STAGING_DIR/HonoClaw-$VERSION-linux-arm64.AppImage" ] && LINUX_ARM64="$BASE_URL/HonoClaw-$VERSION-linux-arm64.AppImage"
+          if [ -n "$LINUX_X64" ] || [ -n "$LINUX_ARM64" ]; then
+            jq \
+              --arg x64 "$LINUX_X64" \
+              --arg arm64 "$LINUX_ARM64" \
+              '.downloads.linux = ({}
+                + (if $x64 != "" then { x64: $x64 } else {} end)
+                + (if $arm64 != "" then { arm64: $arm64 } else {} end))' \
+              "$STAGING_DIR/release-info.json" > "$STAGING_DIR/release-info.tmp" \
+              && mv "$STAGING_DIR/release-info.tmp" "$STAGING_DIR/release-info.json"
+          fi
 
           echo "=== release-info.json ==="
-          cat staging/${CHANNEL}/release-info.json
+          cat "$STAGING_DIR/release-info.json"
 
       - name: Configure AWS CLI for Cloudflare R2
         env:
