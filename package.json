@@ -1,6 +1,6 @@
 {
     "name": "honoclaw",
-    "version": "0.3.8",
+    "version": "0.3.8-hotfix.1",
     "pnpm": {
         "onlyBuiltDependencies": [
             "@discordjs/opus",
