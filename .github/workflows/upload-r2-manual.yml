@@ -53,6 +53,19 @@ jobs:
             cp "$file" "staging/${CHANNEL}/${filename}"
           done
 
+          # Stable clients always request latest.yml from the /latest channel.
+          # Hotfix/pre-release tags may generate channel-specific metadata like
+          # hotfix.yml instead. For our Windows-only latest feed, mirror any
+          # single non-mac update manifest to latest.yml so existing stable
+          # clients can discover the update.
+          if [ ! -f "staging/${CHANNEL}/latest.yml" ]; then
+            CANDIDATE_YML=$(find "staging/${CHANNEL}" -maxdepth 1 -type f -name "*.yml" ! -name "builder-debug.yml" ! -name "latest-mac.yml" | head -n 1)
+            if [ -n "$CANDIDATE_YML" ]; then
+              cp "$CANDIDATE_YML" "staging/${CHANNEL}/latest.yml"
+              echo "Mirrored $(basename "$CANDIDATE_YML") -> latest.yml"
+            fi
+          fi
+
           echo "=== staging/${CHANNEL}/ ==="
           ls -lh staging/${CHANNEL}/
 
