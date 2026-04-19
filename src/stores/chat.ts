@@ -1728,7 +1728,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           })
         ) {
           console.warn(`[sendMessage] Recoverable chat.send timeout after run activity, keeping poll alive: ${errorMsg}`);
-          set({ error: errorMsg });
         } else {
           clearHistoryPoll();
           clearErrorRecoveryTimer();
@@ -1751,7 +1750,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         })
       ) {
         console.warn(`[sendMessage] Recoverable chat.send timeout after run activity, keeping poll alive: ${errStr}`);
-        set({ error: errStr });
       } else {
         clearHistoryPoll();
         clearErrorRecoveryTimer();
