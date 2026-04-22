@@ -74,6 +74,7 @@ export interface GatewayManagerEvents {
   error: (error: Error) => void;
   'channel:status': (data: { channelId: string; status: string }) => void;
   'chat:message': (data: { message: unknown }) => void;
+  'gateway:ready': (data: unknown) => void;
 }
 
 /**
